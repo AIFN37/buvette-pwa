@@ -1,6 +1,6 @@
 # La Table de Foulques Nerra
 
-Application Progressive Web App (PWA) pour la gestion des commandes de repas dans une buvette de fête rurale.
+Application Progressive Web App (PWA) pour la gestion des commandes de repas dans une buvette de fête rurale. Permet d'alerter le client que son repas est pret et qu'il peut venir le chercher.
 
 ## Fonctionnalités
 
