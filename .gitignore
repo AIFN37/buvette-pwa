@@ -1,0 +1,42 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Dependency directories
+node_modules/
+jspm_packages/
+.npm/
+.yarn/
+.pnpm/
+.hxcpp_cache/
+.flow/
+.idea/
+
+# Editor directories and files
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Local env files
+.env
+.env.development
+.env.test
+.env.production
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Firebase
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+.firebaserc # Si vous souhaitez gérer la configuration Firebase via le CLI
+functions/node_modules/ # Les modules des fonctions sont installés séparément

@@ -1,0 +1,371 @@
+:root {
+  /* Couleurs principales */
+  --main-bg-color: #212121; /* Gris anthracite */
+  --text-color: #e0e0e0; /* Gris clair pour le texte */
+  --primary-button-color: #4caf50; /* Vert bouton */
+  --primary-button-hover: #45a049;
+
+  /* Couleurs des statuts / Cuissons - Acidulées */
+  --status-pending: #ffeb3b; /* Jaune vif */
+  --status-ready: #4caf50; /* Vert vif */
+  --status-relance: #f44336; /* Rouge vif */
+  --status-delivered: #616161; /* Gris foncé */
+  --status-lost-turn: #ff0000; /* Rouge pur pour "perdu son tour" */
+
+  --cooking-bc: #8d6e63; /* Marron vif */
+  --cooking-ap: #ff9800; /* Orange vif */
+  --cooking-s: #d32f2f; /* Rouge vif */
+  --cooking-b: #673ab7; /* Violet vif */
+
+  --error-message-color: #e57373; /* Rouge pour les erreurs */
+}
+
+body {
+  font-family: 'Arial', sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: var(--main-bg-color);
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  color: var(--text-color);
+  overflow-x: hidden; /* Empêche le défilement horizontal */
+}
+
+.container {
+  background-color: #333333; /* Un gris légèrement plus clair que le fond */
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  text-align: center;
+  width: 95%; /* Prend presque toute la largeur */
+  max-width: 600px; /* Limite la largeur sur les grands écrans */
+  margin: 20px auto; /* Centre le conteneur */
+  box-sizing: border-box; /* Inclure padding et border dans la largeur */
+}
+
+h1 {
+  color: var(--text-color);
+  margin-bottom: 20px;
+  font-size: 1.8em;
+}
+
+p {
+  font-size: 1.1em;
+  line-height: 1.5;
+}
+
+button {
+  background-color: var(--primary-button-color);
+  color: white;
+  padding: 12px 25px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.1em;
+  margin: 10px 5px;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  width: auto; /* Ajuste la largeur au contenu */
+  min-width: 120px; /* Taille minimale pour gros doigts */
+}
+
+button:hover {
+  background-color: var(--primary-button-hover);
+  transform: translateY(-2px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+input[type='text'],
+input[type='password'] {
+  width: calc(100% - 20px); /* Prend presque toute la largeur du parent */
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #555;
+  border-radius: 5px;
+  background-color: #444;
+  color: var(--text-color);
+  font-size: 1.1em;
+  box-sizing: border-box; /* Inclure padding et border dans la largeur */
+}
+
+input[type='text']::placeholder,
+input[type='password']::placeholder {
+  color: #bbb;
+}
+
+.error-message {
+  color: var(--error-message-color);
+  font-weight: bold;
+  margin-top: -10px;
+  margin-bottom: 15px;
+}
+
+/* --- Guest Module Specific Styles --- */
+.guest-container h1 {
+  color: var(--primary-button-color); /* Vert pour le titre Guest */
+}
+
+.qr-placeholder {
+  width: 100%;
+  max-width: 300px;
+  height: 300px; /* Hauteur fixe pour le lecteur QR */
+  margin: 20px auto;
+  border: 2px dashed #555;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  font-size: 1.1em;
+  color: #bbb;
+  background-color: #2b2b2b;
+  overflow: hidden; /* Pour que le lecteur de caméra ne déborde pas */
+}
+
+.qr-placeholder video {
+  width: 100% !important;
+  height: auto !important;
+}
+
+.pin-code-wrapper {
+  font-size: 1.2em;
+  font-weight: normal;
+  color: var(--text-color);
+  margin-top: 20px;
+}
+
+.pin-code {
+  font-size: 2.8em; /* Gros PIN */
+  font-weight: bold;
+  color: var(--primary-button-color);
+  margin: 10px 0;
+  padding: 10px 20px;
+  border: 2px solid var(--primary-button-color);
+  border-radius: 8px;
+  display: inline-block;
+  background-color: #3d3d3d;
+}
+
+.cooking-type {
+  font-size: 1.4em;
+  font-weight: bold;
+  margin-bottom: 15px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  display: inline-block; /* Pour que la couleur de fond s'applique bien */
+  color: var(--text-color); /* Couleur du texte par défaut pour la cuisson */
+}
+/* Couleurs de cuisson */
+.cooking-type.bc {
+  background-color: var(--cooking-bc);
+}
+.cooking-type.ap {
+  background-color: var(--cooking-ap);
+}
+.cooking-type.s {
+  background-color: var(--cooking-s);
+}
+.cooking-type.b {
+  background-color: var(--cooking-b);
+}
+
+.status-message {
+  font-size: 1.3em;
+  font-weight: bold;
+  margin: 20px 0;
+  padding: 10px 15px;
+  border-radius: 8px;
+  color: var(--text-color);
+  min-height: 2em; /* Empêche le saut de mise en page */
+  display: flex; /* Pour centrer le texte verticalement */
+  align-items: center;
+  justify-content: center;
+}
+
+/* Couleurs de statut pour le Guest (fond) */
+.status-message.pending {
+  background-color: var(--status-pending);
+  color: #333;
+}
+.status-message.ready {
+  background-color: var(--status-ready);
+  color: white;
+}
+.status-message.relance {
+  background-color: var(--status-relance);
+  color: white;
+}
+.status-message.delivered {
+  background-color: var(--status-delivered);
+  color: #bbb;
+}
+.status-message.lost-turn {
+  background-color: var(--status-lost-turn);
+  color: white;
+}
+
+.countdown {
+  font-size: 3.5em; /* Gros compte à rebours */
+  font-weight: bold;
+  color: var(--status-relance); /* Couleur rouge pour le compte à rebours */
+  margin-top: 20px;
+  padding: 10px 0;
+  animation: pulse 1.5s infinite alternate; /* Effet de pulsation */
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+/* --- Manager Module Specific Styles --- */
+.manager-container h1 {
+  color: var(--primary-button-color); /* Vert pour le titre Manager */
+}
+
+#auth-section {
+  padding: 20px 0;
+}
+
+.search-area {
+  margin-bottom: 20px;
+}
+
+#orders-list {
+  margin-top: 20px;
+  text-align: left;
+  max-height: 60vh; /* Limite la hauteur de la liste des commandes */
+  overflow-y: auto; /* Ajoute un défilement si trop de commandes */
+  padding-right: 5px; /* Pour le défilement */
+}
+
+.order-item {
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.3s ease;
+  border: 1px solid #444; /* Bordure plus sombre pour le contraste */
+  min-height: 50px; /* Pour les gros doigts */
+}
+
+.order-item:hover {
+  background-color: #444; /* Légèrement plus clair au survol */
+}
+
+.order-item .pin {
+  font-weight: bold;
+  font-size: 1.3em; /* PIN plus grand */
+  flex-basis: 30%; /* Prend un tiers de la largeur */
+  text-align: left;
+  color: var(--text-color);
+}
+
+.order-item .cooking-abbr {
+  font-weight: bold;
+  font-size: 1.1em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  color: #333; /* Texte sombre sur fond couleur */
+  flex-basis: 20%; /* Prend un cinquième */
+  text-align: center;
+}
+
+/* Couleurs de cuisson pour Manager */
+.order-item .cooking-abbr.bc {
+  background-color: var(--cooking-bc);
+}
+.order-item .cooking-abbr.ap {
+  background-color: var(--cooking-ap);
+}
+.order-item .cooking-abbr.s {
+  background-color: var(--cooking-s);
+}
+.order-item .cooking-abbr.b {
+  background-color: var(--cooking-b);
+}
+
+/* Couleurs de statut pour Manager (fond de ligne) */
+.order-item.status-pending {
+  background-color: var(--status-pending);
+  color: #333;
+} /* Texte sombre sur jaune */
+.order-item.status-ready {
+  background-color: var(--status-ready);
+  color: white;
+}
+.order-item.status-relance {
+  background-color: var(--status-relance);
+  color: white;
+}
+.order-item.status-delivered {
+  background-color: var(--status-delivered);
+  color: #bbb;
+  text-decoration: line-through;
+} /* Gris et barré */
+
+/* Media queries pour le responsive design */
+@media (max-width: 600px) {
+  .container {
+    padding: 15px;
+    margin: 10px auto;
+    width: 98%;
+  }
+
+  h1 {
+    font-size: 1.5em;
+  }
+
+  button {
+    padding: 10px 15px;
+    font-size: 1em;
+    min-width: 100px;
+  }
+
+  input[type='text'],
+  input[type='password'] {
+    font-size: 1em;
+    padding: 8px;
+  }
+
+  .pin-code {
+    font-size: 2.2em;
+    padding: 8px 15px;
+  }
+
+  .cooking-type {
+    font-size: 1.2em;
+  }
+
+  .status-message {
+    font-size: 1.1em;
+    padding: 8px 10px;
+  }
+
+  .countdown {
+    font-size: 2.8em;
+  }
+
+  .order-item {
+    flex-wrap: wrap; /* Permet aux éléments de passer à la ligne si l'écran est petit */
+    padding: 8px;
+  }
+  .order-item .pin,
+  .order-item .cooking-abbr {
+    flex-basis: auto; /* Laisse le contenu dicter la largeur */
+    margin-right: 10px;
+  }
+}
