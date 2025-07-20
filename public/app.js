@@ -28,7 +28,7 @@ const messaging = getMessaging(app);
 
 // --- Constantes de Configuration (AJUSTEZ CELLES-CI SI BESOIN) ---
 const MANAGER_PIN_DOC_ID = 'managerPinConfig'; // Document ID pour le PIN Manager dans Firestore
-const MANAGER_DEFAULT_PIN = '3369'; // PIN par défaut si non trouvé dans Firestore (à changer !)
+const MANAGER_DEFAULT_PIN = '3369'; // PIN accès Manager par défaut si non trouvé dans Firestore (à changer !)
 const RELANCE_INTERVAL_MS = 30 * 1000; // 30 secondes
 const MAX_RELANCES = 3; // 3 relances = 90 secondes
 
