@@ -2,19 +2,22 @@
 // IMPORTANT : Ce fichier DOIT être à la racine de votre dossier "public"
 // pour que le Service Worker ait la portée correcte.
 
-// Importez les scripts Firebase nécessaires. Utilisez les versions "compat" pour la compatibilité.
+// Importez les scripts Firebase nécessaires via importScripts.
+// Ces scripts rendent les objets 'firebase' et 'firebase.messaging' disponibles globalement.
 importScripts('https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.4.0/firebase-messaging-compat.js');
 
-// Importez votre configuration Firebase. Le chemin est relatif au Service Worker.
-// Puisque firebase-config.js est maintenant dans le même dossier 'public', le chemin est './firebase-config.js'.
-import { firebaseConfig } from './firebase-config.js'; // Chemin corrigé
+// La configuration Firebase doit être disponible globalement pour le Service Worker.
+// Nous allons la récupérer via un importScripts de firebase-config.js
+// Assurez-vous que firebase-config.js ne contient que l'objet 'firebaseConfig' et PAS de 'export'.
+importScripts('./firebase-config.js'); // Le chemin est relatif au Service Worker (dans le même dossier 'public')
 
 // Initialisez l'application Firebase dans le Service Worker.
-firebase.initializeApp(firebaseConfig);
+// L'objet 'firebaseConfig' est maintenant disponible globalement grâce à l'importScripts ci-dessus.
+self.firebase.initializeApp(firebaseConfig);
 
 // Récupérez l'instance de Messaging.
-const messaging = firebase.messaging();
+const messaging = self.firebase.messaging();
 
 // Gérer les messages en arrière-plan (quand l'app n'est pas ouverte/en focus).
 messaging.onBackgroundMessage((payload) => {
