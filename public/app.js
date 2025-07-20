@@ -3,7 +3,7 @@ import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, query, wh
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-messaging.js";
 // L'importation de html5-qrcode-scanner n'est plus nécessaire car le scanner QR a été retiré du module Guest.
 // import { Html5QrcodeScanner } from "../node_modules/html5-qrcode/esm/html5-qrcode-scanner.js";
-import { firebaseConfig } from './firebase-config.js'; // Chemin correct si firebase-config.js est à la racine du projet
+import { firebaseConfig } from './firebase-config.js'; // Chemin corrigé si firebase-config.js est dans le dossier public
 
 // --- Initialisation Firebase ---
 const app = initializeApp(firebaseConfig);
@@ -43,7 +43,7 @@ async function requestNotificationPermissionAndGetToken() {
             console.log('Permission de notification accordée.');
             // REMPLACEZ 'VOTRE_CLE_VAPID_PUBLIQUE' PAR VOTRE VRAIE CLÉ VAPID PUBLIQUE DEPUIS LA CONSOLE FIREBASE !
             // Exemple: const token = await getToken(messaging, { vapidKey: 'BOfarRrQ23arrM__eUBYL4RcP_wJDiP6gMRX8hqxwk8K4SeN1mSYqIplsq4nm0lXcMnJjHED6HSHB_J2iovTgAY' });
-            const token = await getToken(messaging, { vapidKey: 'BOfarRrQ23arrM__eUBYL4RcP_wJDiP6gMRX8hqxwk8K4SeN1mSYqIplsq4nm0lXcMnJjHED6HSHB_J2iovTgAY' });
+            const token = await getToken(messaging, { vapidKey: 'VOTRE_CLE_VAPID_PUBLIQUE' });
             console.log('Jeton FCM :', token);
             return token;
         } else {
@@ -354,6 +354,7 @@ if (window.location.pathname.endsWith('manager.html')) {
     };
 
     let managerPin = MANAGER_DEFAULT_PIN; // PIN par défaut, sera mis à jour depuis Firestore
+    let allOrders = []; // Nouvelle variable pour stocker toutes les commandes récupérées
 
     /**
      * Charge le PIN Manager depuis Firestore ou le crée s'il n'existe pas.
@@ -394,6 +395,81 @@ if (window.location.pathname.endsWith('manager.html')) {
     let unsubscribeOrders = null; // Pour pouvoir désabonner l'écoute
 
     /**
+     * Fonction pour rendre la liste des commandes dans l'UI du Manager.
+     * @param {Array<Object>} ordersToRender - Les commandes à afficher.
+     * @param {string} searchTerm - Le terme de recherche actuel.
+     */
+    function renderOrdersList(ordersToRender, searchTerm = '') {
+        ordersList.innerHTML = ''; // Nettoyer la liste
+
+        const filteredOrders = searchTerm
+            ? ordersToRender.filter(order => order.pin && order.pin.includes(searchTerm)) // Ajout de order.pin pour s'assurer qu'il existe
+            : ordersToRender;
+
+        if (filteredOrders.length === 0 && searchTerm) {
+            ordersList.innerHTML = `<p>Aucun PIN '${searchTerm}' trouvé.</p>`;
+            return;
+        } else if (filteredOrders.length === 0 && !searchTerm) {
+            ordersList.innerHTML = '<p>Aucune commande en cours.</p>';
+            return;
+        }
+
+        filteredOrders.forEach(order => {
+            const orderItem = document.createElement('div');
+            orderItem.classList.add('order-item');
+            orderItem.dataset.id = order.id; // Pour référence facile au document Firestore
+
+            // Appliquer la classe de statut pour la couleur de fond
+            let statusClass = '';
+            if (order.status === 'pending') {
+                statusClass = 'status-pending';
+            } else if (order.status === 'ready') {
+                statusClass = 'status-ready';
+            } else if (order.status === 'relance') {
+                statusClass = 'status-relance';
+            } else if (order.status === 'delivered') {
+                statusClass = 'status-delivered';
+            } else if (order.status === 'lost_turn') {
+                statusClass = 'status-delivered'; // Afficher comme livré/terminé pour le manager
+            }
+            orderItem.classList.add(statusClass);
+
+            // Récupérer le nom complet de la cuisson et sa classe de couleur
+            const cookingName = cookingAbbrMap[order.cookingType] || 'N/A';
+            const cookingColorClass = cookingColorClasses[order.cookingType] || '';
+
+
+            // Le contenu de la ligne : PIN + Type de Cuisson (Abréviation colorée)
+            orderItem.innerHTML = `
+                <span class="pin">${order.pin}</span>
+                <span class="cooking-abbr ${cookingColorClass}">${order.cookingType}</span>
+                <span class="status-text">${order.status.replace('_', ' ')}</span>
+            `;
+
+            // Logique de clic pour changer le statut
+            orderItem.addEventListener('click', async () => {
+                const orderRef = doc(db, "orders", order.id);
+                if (order.status === 'pending') {
+                    // Passe à READY, la Cloud Function va envoyer la 1ère notification
+                    await updateDoc(orderRef, {
+                        status: "ready",
+                        readyTimestamp: Date.now(), // Enregistre le timestamp de la mise en prêt
+                        relanceCount: 0 // Réinitialise le compteur de relance
+                    });
+                    console.log(`Commande ${order.pin} marquée comme PRÊTE.`);
+                } else if (order.status === 'ready' || order.status === 'relance') {
+                    // Passe à DELIVERED
+                    await updateDoc(orderRef, { status: "delivered" });
+                    console.log(`Commande ${order.pin} marquée comme LIVRÉE.`);
+                }
+                // Si le statut est déjà 'delivered' ou 'lost_turn', on ne fait rien au clic pour l'instant
+            });
+            ordersList.appendChild(orderItem);
+        });
+    }
+
+
+    /**
      * Démarre l'écoute en temps réel des commandes dans Firestore pour le Manager.
      */
     function startOrderListener() {
@@ -419,109 +495,25 @@ if (window.location.pathname.endsWith('manager.html')) {
                 }
             });
 
-            // Retrier les commandes actives par createdAt pour s'assurer que les plus anciennes sont en haut
             activeOrders.sort((a, b) => {
                 const aTime = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate().getTime() : a.createdAt) : 0;
                 const bTime = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate().getTime() : b.createdAt) : 0;
                 return aTime - bTime;
             });
 
-            // Combiner les listes (actives d'abord, puis livrées/perdues)
-            const sortedOrders = activeOrders.concat(deliveredAndLostOrders);
+            allOrders = activeOrders.concat(deliveredAndLostOrders); // Stocke toutes les commandes récupérées
 
-            ordersList.innerHTML = ''; // Nettoyer la liste
-            if (sortedOrders.length === 0) {
-                ordersList.innerHTML = '<p>Aucune commande en cours.</p>';
-                return;
-            }
-
-            // Gérer le filtre de recherche
-            const searchTerm = pinSearchInput.value.trim().toUpperCase();
-            const filteredOrders = searchTerm
-                ? sortedOrders.filter(order => order.pin.includes(searchTerm))
-                : sortedOrders;
-
-            if (filteredOrders.length === 0 && searchTerm) {
-                 ordersList.innerHTML = `<p>Aucun PIN '${searchTerm}' trouvé.</p>`;
-                 return;
-            }
-
-            filteredOrders.forEach(order => {
-                const orderItem = document.createElement('div');
-                orderItem.classList.add('order-item');
-                orderItem.dataset.id = order.id; // Pour référence facile au document Firestore
-
-                // Appliquer la classe de statut pour la couleur de fond
-                let statusClass = '';
-                if (order.status === 'pending') {
-                    statusClass = 'status-pending';
-                } else if (order.status === 'ready') {
-                    statusClass = 'status-ready';
-                } else if (order.status === 'relance') {
-                    statusClass = 'status-relance';
-                } else if (order.status === 'delivered') {
-                    statusClass = 'status-delivered';
-                } else if (order.status === 'lost_turn') {
-                    statusClass = 'status-delivered'; // Afficher comme livré/terminé pour le manager
-                }
-                orderItem.classList.add(statusClass);
-
-                // Récupérer le nom complet de la cuisson et sa classe de couleur
-                const cookingName = cookingAbbrMap[order.cookingType] || 'N/A';
-                const cookingColorClass = cookingColorClasses[order.cookingType] || '';
-
-
-                // Le contenu de la ligne : PIN + Type de Cuisson (Abréviation colorée)
-                orderItem.innerHTML = `
-                    <span class="pin">${order.pin}</span>
-                    <span class="cooking-abbr ${cookingColorClass}">${order.cookingType}</span>
-                    <span class="status-text">${order.status.replace('_', ' ')}</span>
-                `;
-
-                // Logique de clic pour changer le statut
-                orderItem.addEventListener('click', async () => {
-                    const orderRef = doc(db, "orders", order.id);
-                    if (order.status === 'pending') {
-                        // Passe à READY, la Cloud Function va envoyer la 1ère notification
-                        await updateDoc(orderRef, {
-                            status: "ready",
-                            readyTimestamp: Date.now(), // Enregistre le timestamp de la mise en prêt
-                            relanceCount: 0 // Réinitialise le compteur de relance
-                        });
-                        console.log(`Commande ${order.pin} marquée comme PRÊTE.`);
-                    } else if (order.status === 'ready' || order.status === 'relance') {
-                        // Passe à DELIVERED
-                        await updateDoc(orderRef, { status: "delivered" });
-                        console.log(`Commande ${order.pin} marquée comme LIVRÉE.`);
-                    }
-                    // Si le statut est déjà 'delivered' ou 'lost_turn', on ne fait rien au clic pour l'instant
-                });
-                ordersList.appendChild(orderItem);
-            });
+            // Rend la liste avec le terme de recherche actuel
+            renderOrdersList(allOrders, pinSearchInput.value.trim().toUpperCase());
+        }, (error) => {
+            console.error("Erreur lors de l'écoute des commandes Firestore :", error);
+            ordersList.innerHTML = '<p class="error-message">Erreur de chargement des commandes. Vérifiez les règles Firestore.</p>';
         });
     }
 
-    // Gérer la recherche
+    // Gérer la recherche : déclenche un nouveau rendu de la liste filtrée
     pinSearchInput.addEventListener('input', () => {
-        // La recherche est gérée directement par onSnapshot qui est réévalué
-        // Pas besoin de rappeler startOrderListener, l'écoute en temps réel gérera la mise à jour de l'UI.
-        // On force juste une mise à jour visuelle pour que le filtre soit appliqué immédiatement.
-        const searchTerm = pinSearchInput.value.trim().toUpperCase();
-        const orders = Array.from(ordersList.children);
-        orders.forEach(item => {
-            const pin = item.querySelector('.pin').innerText;
-            if (searchTerm === '' || pin.includes(searchTerm)) {
-                item.style.display = '';
-            } else {
-                item.style.display = 'none';
-            }
-        });
-        if (searchTerm !== '' && orders.filter(item => item.style.display !== 'none').length === 0) {
-            ordersList.innerHTML = `<p>Aucun PIN '${searchTerm}' trouvé.</p>`;
-        } else if (searchTerm === '' && orders.length === 0) {
-            ordersList.innerHTML = '<p>Aucune commande en cours.</p>';
-        }
-
+        renderOrdersList(allOrders, pinSearchInput.value.trim().toUpperCase());
     });
 
     // Charger le PIN Manager au démarrage de la page Manager
