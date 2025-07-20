@@ -9,7 +9,7 @@ importScripts('https://www.gstatic.com/firebasejs/10.4.0/firebase-messaging-comp
 // Importez votre configuration Firebase. Le chemin est relatif au Service Worker.
 // Comme le SW est à la racine de 'public', et firebase-config.js à la racine du projet,
 // le chemin est '../firebase-config.js'.
-import { firebaseConfig } from '../firebase-config.js';
+import { firebaseConfig } from './firebase-config.js';
 
 // Initialisez l'application Firebase dans le Service Worker.
 firebase.initializeApp(firebaseConfig);
