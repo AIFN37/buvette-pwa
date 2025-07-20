@@ -3,7 +3,7 @@ import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, query, wh
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-messaging.js";
 // L'importation de html5-qrcode-scanner n'est plus nécessaire car le scanner QR a été retiré du module Guest.
 // import { Html5QrcodeScanner } from "../node_modules/html5-qrcode/esm/html5-qrcode-scanner.js";
-import { firebaseConfig } from '../firebase-config.js'; // Chemin correct si firebase-config.js est à la racine du projet
+import { firebaseConfig } from './firebase-config.js'; // Chemin correct si firebase-config.js est à la racine du projet
 
 // --- Initialisation Firebase ---
 const app = initializeApp(firebaseConfig);
