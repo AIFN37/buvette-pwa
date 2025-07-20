@@ -1,6 +1,6 @@
 // firebase-config.js
 
-// Your web app's Firebase configuration
+// Your web app's Firebase configuration ok
 const firebaseConfig = {
   apiKey: 'AIzaSyArs0ixgaMUuNQdngC-7FpGgFkPbXbd5xI',
   authDomain: 'buvettepwa.firebaseapp.com',
