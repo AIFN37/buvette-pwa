@@ -1,32 +1,35 @@
+Voici le nouveau contenu pour votre fichier public/manager.html. J'ai ajouté un bouton "Retour à l'accueil" dans le tableau de bord du manager.
+
 <!DOCTYPE html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>La Table de Foulques Nerra - Manager</title>
-    <link rel="stylesheet" href="style.css" />
-    <link rel="manifest" href="/manifest.json" />
-  </head>
-  <body>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="/manifest.json">
+</head>
+<body>
     <div class="container manager-container">
-      <div id="auth-section">
-        <h1>Accès Manager</h1>
-        <p>Entrez le code PIN Manager :</p>
-        <input type="password" id="manager-pin-input" placeholder="Code PIN Manager" />
-        <button id="manager-login-btn">Connexion</button>
-        <p id="auth-error-message" class="error-message"></p>
-      </div>
+        <div id="auth-section">
+            <h1>Accès Manager</h1>
+            <p>Entrez le code PIN Manager :</p>
+            <input type="password" id="manager-pin-input" placeholder="Code PIN Manager">
+            <button id="manager-login-btn">Connexion</button>
+            <p id="auth-error-message" class="error-message"></p>
+        </div>
 
-      <div id="manager-dashboard" style="display: none">
-        <h1>Gestion des Commandes</h1>
-        <div class="search-area">
-          <input type="text" id="pin-search-input" placeholder="Rechercher un PIN..." />
+        <div id="manager-dashboard" style="display: none;">
+            <button onclick="location.href='index.html'" class="back-button">Retour à l'accueil</button>
+            <h1>Gestion des Commandes</h1>
+            <div class="search-area">
+                <input type="text" id="pin-search-input" placeholder="Rechercher un PIN...">
+            </div>
+            <div id="orders-list">
+                <p>Aucune commande en cours.</p>
+            </div>
         </div>
-        <div id="orders-list">
-          <p>Aucune commande en cours.</p>
-        </div>
-      </div>
     </div>
     <script type="module" src="app.js"></script>
-  </body>
+</body>
 </html>
