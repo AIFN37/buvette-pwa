@@ -3,22 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>La Table de Foulques Nerra - Suivi de ma commande de repas</title>
+    <title>Buvette - Ma Commande</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="/manifest.json">
+    <!-- Font Awesome pour les icônes (si vous voulez des icônes plus élaborées) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
     <div class="container guest-container">
-        <h1>Votre Commande</h1>
-        <p id="initial-message">Un instant, nous générons votre PIN...</p>
-        <div id="order-details" style="display: none;">
-            <div class="pin-code-wrapper">
-                Votre PIN : <span id="pin-display" class="pin-code"></span>
+        <h1>Vos Commandes</h1>
+
+        <div id="create-order-section" class="card">
+            <h2>Nouvelle Commande</h2>
+            <div class="cooking-options">
+                <label><input type="radio" name="cookingType" value="BC" checked> Bien Cuit</label>
+                <label><input type="radio" name="cookingType" value="AP"> À Point</label>
+                <label><input type="radio" name="cookingType" value="S"> Saignant</label>
+                <label><input type="radio" name="cookingType" value="B"> Bleu</label>
             </div>
-            <p id="cooking-type-display" class="cooking-type"></p>
-            <p id="status-message" class="status-message"></p>
-            <div id="countdown-display" class="countdown" style="display: none;"></div>
+            <button id="add-order-btn">Ajouter une commande</button>
         </div>
+
+        <div id="orders-list-section" class="card" style="display: none;">
+            <h2>Commandes en cours</h2>
+            <div id="guest-orders-list">
+                <!-- Les commandes seront insérées ici par JavaScript -->
+                <p>Aucune commande ajoutée pour le moment.</p>
+            </div>
+            <div class="actions-buttons">
+                <button id="validate-all-orders-btn" class="validate-btn" style="display: none;">
+                    <i class="fas fa-check"></i> Valider toutes les commandes
+                </button>
+                <button id="cancel-all-orders-btn" class="cancel-btn" style="display: none;">
+                    <i class="fas fa-times"></i> Annuler tout
+                </button>
+            </div>
+        </div>
+
+        <!-- Modale de confirmation (cachée par défaut) -->
+        <div id="confirmation-modal" class="modal">
+            <div class="modal-content">
+                <p id="modal-message"></p>
+                <div class="modal-buttons">
+                    <button id="modal-confirm-btn" class="validate-btn">Confirmer</button>
+                    <button id="modal-cancel-btn" class="cancel-btn">Annuler</button>
+                </div>
+            </div>
+        </div>
+
     </div>
     <script type="module" src="app.js"></script>
 </body>
