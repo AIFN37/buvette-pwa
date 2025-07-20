@@ -43,7 +43,7 @@ async function requestNotificationPermissionAndGetToken() {
             console.log('Permission de notification accordée.');
             // REMPLACEZ 'VOTRE_CLE_VAPID_PUBLIQUE' PAR VOTRE VRAIE CLÉ VAPID PUBLIQUE DEPUIS LA CONSOLE FIREBASE !
             // Exemple: const token = await getToken(messaging, { vapidKey: 'BOfarRrQ23arrM__eUBYL4RcP_wJDiP6gMRX8hqxwk8K4SeN1mSYqIplsq4nm0lXcMnJjHED6HSHB_J2iovTgAY' });
-            const token = await getToken(messaging, { vapidKey: 'VOTRE_CLE_VAPID_PUBLIQUE' });
+            const token = await getToken(messaging, { vapidKey: 'BOfarRrQ23arrM__eUBYL4RcP_wJDiP6gMRX8hqxwk8K4SeN1mSYqIplsq4nm0lXcMnJjHED6HSHB_J2iovTgAY' });
             console.log('Jeton FCM :', token);
             return token;
         } else {
