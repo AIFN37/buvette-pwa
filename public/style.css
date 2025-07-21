@@ -1,90 +1,89 @@
-:root {
-    /* Couleurs principales */
-    --main-bg-color: #212121; /* Gris anthracite */
-    --text-color: #E0E0E0;   /* Gris clair pour le texte */
-    --primary-button-color: #4CAF50; /* Vert bouton */
-    --primary-button-hover: #45a049;
-
-    /* Couleurs des statuts / Cuissons - Acidulées */
-    --status-pending: #FFEB3B;    /* Jaune vif */
-    --status-ready: #4CAF50;      /* Vert vif */
-    --status-relance: #F44336;    /* Rouge vif */
-    --status-delivered: #616161;  /* Gris foncé */
-    --status-lost-turn: #FF0000;  /* Rouge pur pour "perdu son tour" */
-
-    --cooking-bc: #8D6E63; /* Marron vif */
-    --cooking-ap: #FF9800; /* Orange vif */
-    --cooking-s: #D32F2F;  /* Rouge vif */
-    --cooking-b: #673AB7;  /* Violet vif */
-
-    --error-message-color: #E57373; /* Rouge pour les erreurs */
-
-    /* Nouvelles couleurs pour les boutons d'action */
-    --delete-button-color: #F44336; /* Rouge */
-    --modify-button-color: #2196F3; /* Bleu */
-    --validate-button-color: #4CAF50; /* Vert */
-    --cancel-button-color: #9E9E9E; /* Gris */
-}
-
+/* General Body and Container Styles */
 body {
-    font-family: 'Arial', sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    background-color: var(--main-bg-color);
+    font-family: 'Inter', sans-serif; /* Using Inter font as per instructions */
     margin: 0;
     padding: 0;
+    background-color: #f0f2f5;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* Align items to the start for better content flow */
+    min-height: 100vh;
     box-sizing: border-box;
-    color: var(--text-color);
-    overflow-x: hidden; /* Empêche le défilement horizontal */
 }
 
 .container {
-    background-color: #333333; /* Un gris légèrement plus clair que le fond */
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-    text-align: center;
-    width: 95%; /* Prend presque toute la largeur */
-    max-width: 600px; /* Limite la largeur sur les grands écrans */
-    margin: 20px auto; /* Centre le conteneur */
-    box-sizing: border-box; /* Inclure padding et border dans la largeur */
+    background-color: #ffffff;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 500px; /* Max width for mobile-first approach */
+    margin: 20px; /* Add margin for spacing on larger screens */
+    box-sizing: border-box;
 }
 
 h1 {
-    color: var(--text-color);
-    margin-bottom: 20px;
-    font-size: 1.8em;
+    text-align: center;
+    color: #4CAF50; /* Green for main headings */
+    margin-bottom: 25px;
+    font-size: 2em;
+    font-weight: 700;
 }
 
 h2 {
-    color: var(--primary-button-color);
+    color: #555;
+    margin-top: 20px;
     margin-bottom: 15px;
     font-size: 1.5em;
+    font-weight: 600;
 }
 
-p {
-    font-size: 1.1em;
-    line-height: 1.5;
+/* Card Styles */
+.card {
+    background-color: #f9f9f9;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 
+/* Input Styles */
+input[type="text"],
+input[type="password"] {
+    width: calc(100% - 20px);
+    padding: 12px 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1em;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus {
+    border-color: #4CAF50;
+    outline: none;
+}
+
+/* Button Styles */
 button {
-    background-color: var(--primary-button-color);
+    background-color: #4CAF50;
     color: white;
-    padding: 12px 25px;
+    padding: 12px 20px;
     border: none;
     border-radius: 8px;
     cursor: pointer;
-    font-size: 1.1em;
-    margin: 10px 5px;
-    transition: background-color 0.2s ease, transform 0.1s ease;
-    width: auto; /* Ajuste la largeur au contenu */
-    min-width: 120px; /* Taille minimale pour gros doigts */
+    font-size: 1em;
+    font-weight: 600;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    width: 100%; /* Full width for buttons by default */
+    box-sizing: border-box;
 }
 
 button:hover {
-    background-color: var(--primary-button-hover);
+    background-color: #45a049;
     transform: translateY(-2px);
 }
 
@@ -92,377 +91,379 @@ button:active {
     transform: translateY(0);
 }
 
-input[type="text"],
-input[type="password"] {
-    width: calc(100% - 20px); /* Prend presque toute la largeur du parent */
-    padding: 10px;
-    margin-bottom: 15px;
-    border: 1px solid #555;
-    border-radius: 5px;
-    background-color: #444;
-    color: var(--text-color);
-    font-size: 1.1em;
-    box-sizing: border-box; /* Inclure padding et border dans la largeur */
+button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
 }
 
-input[type="text"]::placeholder,
-input[type="password"]::placeholder {
-    color: #bbb;
+.action-btn {
+    background-color: #007bff; /* Blue for general actions */
 }
 
+.action-btn:hover {
+    background-color: #0056b3;
+}
+
+.validate-btn {
+    background-color: #28a745; /* Green for validation */
+}
+
+.validate-btn:hover {
+    background-color: #218838;
+}
+
+.cancel-btn {
+    background-color: #dc3545; /* Red for cancellation/deletion */
+}
+
+.cancel-btn:hover {
+    background-color: #c82333;
+}
+
+/* Error and Info Messages */
 .error-message {
-    color: var(--error-message-color);
-    font-weight: bold;
+    color: #dc3545;
+    font-size: 0.9em;
     margin-top: -10px;
     margin-bottom: 15px;
+    text-align: center;
+}
+
+.info-message {
+    color: #007bff;
+    font-size: 0.9em;
+    margin-top: 10px;
+    text-align: center;
 }
 
 /* --- Guest Module Specific Styles --- */
-.guest-container h1 {
-    color: var(--primary-button-color); /* Vert pour le titre Guest */
+.guest-container {
+    max-width: 600px; /* Slightly wider for guest list */
 }
 
-.card {
-    background-color: #2b2b2b;
-    padding: 20px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+#pin-input-section {
+    text-align: center;
 }
 
-.cooking-options {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-bottom: 20px;
+#add-pin-btn {
+    margin-top: 10px;
 }
 
-.cooking-options label {
-    background-color: #444;
-    padding: 10px 15px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    font-size: 1em;
+#guest-orders-display {
+    margin-top: 25px;
 }
 
-.cooking-options label:hover {
-    background-color: #555;
-}
-
-.cooking-options input[type="radio"] {
-    display: none; /* Cache le bouton radio par défaut */
-}
-
-.cooking-options input[type="radio"]:checked + span {
-    background-color: var(--primary-button-color); /* Couleur si sélectionné */
-    color: white;
-}
-/* Style pour le texte à côté du radio bouton */
-.cooking-options label input[type="radio"] + span {
-    display: inline-block;
-    padding: 0; /* Réinitialiser le padding si nécessaire */
-}
-
-
-/* Styles pour la liste des commandes du Guest */
 #guest-orders-list {
-    margin-top: 20px;
-    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Space between order items */
 }
 
 .guest-order-item {
-    background-color: #3a3a3a;
-    padding: 10px 15px;
-    margin-bottom: 10px;
-    border-radius: 5px;
-    display: flex;
+    background-color: #ffffff;
+    border: 1px solid #eee;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 2fr 0.8fr; /* PIN, Cuisson, Statut+Timestamp, Compte à rebours */
+    gap: 10px;
+    align-items: center;
     justify-content: space-between;
+}
+
+.order-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 2fr 0.8fr; /* PIN, Cuisson, Statut+Timestamp, Compte à rebours */
+    gap: 10px;
     align-items: center;
-    flex-wrap: wrap; /* Permet le retour à la ligne sur petits écrans */
-    gap: 10px; /* Espace entre les éléments */
+    width: 100%;
 }
 
-.guest-order-item .pin-display {
-    font-weight: bold;
-    font-size: 1.2em;
-    color: var(--primary-button-color);
-    flex-basis: 100px; /* Largeur fixe pour le PIN */
-    text-align: left;
-}
-
-.guest-order-item .cooking-type {
-    font-size: 0.9em;
-    padding: 3px 8px;
-    border-radius: 4px;
-    color: var(--text-color);
-    flex-grow: 1; /* Prend l'espace restant */
-    text-align: center;
-}
-
-/* Couleurs de cuisson pour Guest (dans la liste) */
-.guest-order-item .cooking-type.bc { background-color: var(--cooking-bc); }
-.guest-order-item .cooking-type.ap { background-color: var(--cooking-ap); }
-.guest-order-item .cooking-type.s { background-color: var(--cooking-s); }
-.guest-order-item .cooking-type.b { background-color: var(--cooking-b); }
-
-.guest-order-item .status-message {
-    font-size: 0.9em;
-    font-weight: bold;
-    padding: 3px 8px;
-    border-radius: 4px;
-    color: var(--text-color);
-    flex-grow: 1; /* Prend l'espace restant */
-    text-align: center;
-}
-/* Couleurs de statut pour le Guest (dans la liste) */
-.guest-order-item .status-message.client-draft { background-color: #607D8B; color: white; } /* Bleu-gris pour brouillon client */
-.guest-order-item .status-message.pending { background-color: var(--status-pending); color: #333; }
-.guest-order-item .status-message.ready { background-color: var(--status-ready); color: white; }
-.guest-order-item .status-message.relance { background-color: var(--status-relance); color: white; }
-.guest-order-item .status-message.delivered { background-color: var(--status-delivered); color: #BBB; }
-.guest-order-item .status-message.lost-turn { background-color: var(--status-lost-turn); color: white; }
-
-
-.guest-order-item .action-buttons {
+.pin-cell {
+    grid-row: span 2; /* PIN takes 2 rows */
     display: flex;
-    gap: 5px;
-    flex-basis: 120px; /* Largeur fixe pour les boutons */
-    justify-content: flex-end;
-}
-
-.guest-order-item .action-buttons button {
-    padding: 8px; /* Plus petit pour les icônes */
-    min-width: unset; /* Annule le min-width global */
-    width: 35px; /* Taille fixe pour les boutons icônes */
-    height: 35px;
-    border-radius: 50%; /* Boutons ronds */
-    display: flex;
+    align-items: center;
     justify-content: center;
-    align-items: center;
-    font-size: 1.1em;
 }
 
-.guest-order-item .action-buttons .delete-btn { background-color: var(--delete-button-color); }
-.guest-order-item .action-buttons .modify-btn { background-color: var(--modify-button-color); }
-.guest-order-item .action-buttons .validate-btn { background-color: var(--validate-button-color); }
+.pin-display-large {
+    font-size: 2.2em; /* Large PIN size */
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+}
 
-.guest-order-item .action-buttons button:disabled {
-    background-color: #555;
-    cursor: not-allowed;
-    opacity: 0.6;
+.cooking-cell, .status-cell, .countdown-cell {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.cooking-type {
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 0.9em;
+    white-space: nowrap; /* Prevent wrapping */
+}
+
+.status-message {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 3px;
+}
+
+.timestamp-small {
+    font-size: 0.8em;
+    color: #777;
+}
+
+.countdown-timer {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #007bff; /* Blue for countdown */
 }
 
 .actions-buttons {
+    display: flex;
+    justify-content: center;
     margin-top: 20px;
-    display: flex;
-    justify-content: center;
-    gap: 15px;
 }
 
-.actions-buttons .validate-btn { background-color: var(--validate-button-color); }
-.actions-buttons .cancel-btn { background-color: var(--cancel-button-color); }
-
-/* Styles pour la modale de confirmation */
-.modal {
-    display: none; /* Cachée par défaut */
-    position: fixed; /* Reste en place même en scrollant */
-    z-index: 1000; /* Au-dessus de tout */
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto; /* Permet le défilement si le contenu est trop grand */
-    background-color: rgba(0,0,0,0.7); /* Fond semi-transparent noir */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.modal-content {
-    background-color: #333;
-    margin: auto;
-    padding: 30px;
-    border: 1px solid #555;
-    border-radius: 10px;
-    width: 80%;
-    max-width: 400px;
-    text-align: center;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-}
-
-.modal-content p {
-    margin-bottom: 25px;
-    font-size: 1.2em;
-    color: var(--text-color);
-}
-
-.modal-buttons button {
-    margin: 0 10px;
-    padding: 10px 20px;
-    font-size: 1em;
-    min-width: 100px;
+#clear-all-pins-btn {
+    width: auto; /* Allow button to size naturally */
+    padding: 10px 15px;
 }
 
 /* --- Manager Module Specific Styles --- */
-.manager-container h1 {
-    color: var(--primary-button-color); /* Vert pour le titre Manager */
+.manager-container {
+    max-width: 700px; /* Wider for manager dashboard */
 }
 
-#auth-section {
-    padding: 20px 0;
+.dashboard-section {
+    margin-top: 25px;
 }
 
-.search-area {
+.create-order-card {
+    text-align: center;
+}
+
+.pin-generation-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
     margin-bottom: 20px;
 }
 
-#orders-list {
-    margin-top: 20px;
-    text-align: left;
-    max-height: 60vh; /* Limite la hauteur de la liste des commandes */
-    overflow-y: auto; /* Ajoute un défilement si trop de commandes */
-    padding-right: 5px; /* Pour le défilement */
+.generated-pin {
+    font-size: 1.8em;
+    font-weight: bold;
+    color: #4CAF50;
+    background-color: #e8f5e9;
+    padding: 8px 15px;
+    border-radius: 8px;
+    min-width: 120px;
+    text-align: center;
+}
+
+.cooking-options {
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap; /* Allow wrapping on small screens */
+    justify-content: center;
+    gap: 15px;
+    align-items: center;
+}
+
+.cooking-options label {
+    font-weight: 500;
+    margin-right: 5px;
+    display: flex; /* Align label with radio button */
+    align-items: center;
+    gap: 5px;
+}
+
+.cooking-options input[type="radio"] {
+    margin-right: 5px;
+    transform: scale(1.2); /* Slightly larger radio buttons */
+}
+
+#create-order-btn {
+    margin-top: 15px;
+}
+
+.search-bar {
+    margin-bottom: 20px;
+}
+
+.search-bar input[type="text"] {
+    width: 100%;
+}
+
+.orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Space between order items */
 }
 
 .order-item {
-    padding: 10px;
-    margin-bottom: 8px;
-    border-radius: 5px;
-    cursor: pointer;
+    background-color: #ffffff;
+    border: 1px solid #eee;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    transition: background-color 0.3s ease;
-    border: 1px solid #444; /* Bordure plus sombre pour le contraste */
-    min-height: 50px; /* Pour les gros doigts */
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
 .order-item:hover {
-    background-color: #444; /* Légèrement plus clair au survol */
+    background-color: #f0f0f0;
+    transform: translateY(-1px);
 }
 
 .order-item .pin {
     font-weight: bold;
-    font-size: 1.3em; /* PIN plus grand */
-    flex-basis: 30%; /* Prend un tiers de la largeur */
-    text-align: left;
-    color: var(--text-color);
+    font-size: 1.2em;
+    min-width: 60px; /* Ensure PIN column has minimum width */
 }
 
 .order-item .cooking-abbr {
-    font-weight: bold;
-    font-size: 1.1em;
+    font-weight: 600;
     padding: 3px 8px;
-    border-radius: 4px;
-    color: #333; /* Texte sombre sur fond couleur */
-    flex-basis: 20%; /* Prend un cinquième */
-    text-align: center;
-}
-
-/* Couleurs de cuisson pour Manager */
-.order-item .cooking-abbr.bc { background-color: var(--cooking-bc); }
-.order-item .cooking-abbr.ap { background-color: var(--cooking-ap); }
-.order-item .cooking-abbr.s { background-color: var(--cooking-s); }
-.order-item .cooking-abbr.b { background-color: var(--cooking-b); }
-
-
-/* Couleurs de statut pour Manager (fond de ligne) */
-.order-item.status-pending { background-color: var(--status-pending); color: #333; } /* Texte sombre sur jaune */
-.order-item.status-ready { background-color: var(--status-ready); color: white; }
-.order-item.status-relance { background-color: var(--status-relance); color: white; }
-.order-item.status-delivered { background-color: var(--status-delivered); color: #BBB; text-decoration: line-through; } /* Gris et barré */
-
-/* Bouton Retour */
-.back-button {
-    background-color: #555;
-    margin-bottom: 20px;
-    padding: 8px 15px;
+    border-radius: 5px;
     font-size: 0.9em;
-    min-width: unset;
-}
-.back-button:hover {
-    background-color: #666;
+    white-space: nowrap;
 }
 
+.order-item .status-text {
+    font-weight: 500;
+    font-size: 0.95em;
+    flex-grow: 1; /* Allow status text to take available space */
+    text-align: right;
+}
 
-/* Media queries pour le responsive design */
+/* --- Cooking Type Colors --- */
+.cooking-type.bc, .cooking-abbr.bc { background-color: #e8f5e9; color: #28a745; border: 1px solid #28a745; } /* Bien Cuit - Green */
+.cooking-type.ap, .cooking-abbr.ap { background-color: #fff3cd; color: #ffc107; border: 1px solid #ffc107; } /* À Point - Yellow */
+.cooking-type.s, .cooking-abbr.s { background-color: #f8d7da; color: #dc3545; border: 1px solid #dc3545; } /* Saignant - Red */
+.cooking-type.b, .cooking-abbr.b { background-color: #e0f7fa; color: #17a2b8; border: 1px solid #17a2b8; } /* Bleu - Cyan */
+
+/* --- Order Status Colors (Manager & Guest) --- */
+.status-pending, .guest-order-item .pending { background-color: #e0f7fa; color: #17a2b8; } /* Light blue */
+.status-ready, .guest-order-item .ready { background-color: #d4edda; color: #28a745; } /* Light green */
+.status-relance, .guest-order-item .relance { background-color: #fff3cd; color: #ffc107; } /* Light yellow */
+.status-delivered, .guest-order-item .delivered { background-color: #f8d7da; color: #6c757d; } /* Light red, greyed out */
+.status-lost-turn, .guest-order-item .lost-turn { background-color: #f8d7da; color: #dc3545; } /* Light red */
+.status-client-draft, .guest-order-item .client-draft { background-color: #e2e3e5; color: #6c757d; } /* Light grey for client draft */
+
+
+/* --- Modal Styles --- */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1000; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
+    display: flex; /* Use flexbox for centering */
+    align-items: center; /* Center vertically */
+    justify-content: center; /* Center horizontally */
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: auto;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    width: 80%; /* Could be responsive */
+    max-width: 400px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.modal-message {
+    font-size: 1.2em;
+    color: #333;
+    margin-bottom: 0; /* Adjusted margin */
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: space-around;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.modal-buttons button {
+    width: 48%; /* Two buttons side-by-side */
+    padding: 10px 15px;
+    font-size: 0.95em;
+}
+
+/* Responsive adjustments */
 @media (max-width: 600px) {
     .container {
+        margin: 10px;
         padding: 15px;
-        margin: 10px auto;
-        width: 98%;
+        border-radius: 10px;
     }
 
     h1 {
-        font-size: 1.5em;
+        font-size: 1.8em;
     }
 
     h2 {
         font-size: 1.3em;
     }
 
-    button {
-        padding: 10px 15px;
-        font-size: 1em;
-        min-width: 100px;
+    .guest-order-item, .order-grid {
+        grid-template-columns: 1fr 1fr; /* Stack on small screens for better readability */
+        gap: 8px;
     }
 
-    input[type="text"],
-    input[type="password"] {
-        font-size: 1em;
-        padding: 8px;
-    }
-
-    .pin-code {
-        font-size: 2.2em;
-        padding: 8px 15px;
-    }
-
-    .cooking-type {
-        font-size: 1.2em;
-    }
-
-    .status-message {
-        font-size: 1.1em;
-        padding: 8px 10px;
-    }
-
-    .countdown {
-        font-size: 2.8em;
-    }
-
-    .order-item {
-        flex-wrap: wrap; /* Permet aux éléments de passer à la ligne si l'écran est petit */
-        padding: 8px;
-    }
-    .order-item .pin, .order-item .cooking-abbr {
-        flex-basis: auto; /* Laisse le contenu dicter la largeur */
-        margin-right: 10px;
-    }
-
-    .guest-order-item .pin-display {
-        flex-basis: 100%; /* PIN prend toute la largeur sur mobile */
-        text-align: center;
-        margin-bottom: 5px;
-    }
-    .guest-order-item .cooking-type,
-    .guest-order-item .status-message {
-        flex-basis: calc(50% - 5px); /* Moitié de la largeur pour cuisson/statut */
-        margin-bottom: 5px;
-    }
-    .guest-order-item .action-buttons {
-        flex-basis: 100%; /* Boutons prennent toute la largeur */
+    .pin-cell {
+        grid-row: auto; /* Reset row span */
+        grid-column: span 2; /* PIN takes full width on small screens */
         justify-content: center;
     }
 
-    .modal-content {
-        width: 95%;
-        padding: 20px;
+    .pin-display-large {
+        font-size: 2em;
     }
+
+    .cooking-cell, .status-cell, .countdown-cell {
+        align-items: center; /* Center content when stacked */
+        text-align: center;
+    }
+
+    .cooking-options {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .cooking-options label {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .modal-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+
     .modal-buttons button {
-        margin: 5px;
         width: 100%;
     }
 }
