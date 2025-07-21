@@ -418,7 +418,7 @@ if (window.location.pathname.endsWith('guest.html')) {
                 }
             }
         });
-    });
+    };
 
     /**
      * Valide toutes les commandes en brouillon.
