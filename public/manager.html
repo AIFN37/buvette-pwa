@@ -6,15 +6,15 @@
     <title>Buvette - Manager</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="/manifest.json">
-    <!-- Font Awesome pour les icônes -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Ajout de Font Awesome pour les icônes (si non déjà inclus ailleurs) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </head>
 <body>
     <div class="container manager-container">
         <div id="auth-section">
             <h1>Accès Manager</h1>
             <p>Entrez le code PIN Manager :</p>
-            <input type="password" id="manager-pin-input" placeholder="Code PIN Manager">
+            <input type="password" id="manager-pin-input" placeholder="Code PIN Manager" autofocus>
             <button id="manager-login-btn">Connexion</button>
             <p id="auth-error-message" class="error-message"></p>
         </div>
@@ -22,27 +22,8 @@
         <div id="manager-dashboard" style="display: none;">
             <button onclick="location.href='index.html'" class="back-button">Retour à l'accueil</button>
             <h1>Gestion des Commandes</h1>
-
-            <div id="create-order-section" class="card">
-                <h2>Créer une nouvelle commande</h2>
-                <div class="pin-generation-area">
-                    <span id="new-pin-display" class="generated-pin">Générer un N° de commande</span>
-                    <button id="generate-pin-btn">Générer N° de commande</button>
-                </div>
-                <!-- CHAMP POUR LE NOM DU CLIENT -->
-                <input type="text" id="client-name-input" placeholder="Nom du client (optionnel)">
-                <div class="cooking-options">
-                    <label><input type="radio" name="cookingType" value="B" checked> Bleu</label>
-                    <label><input type="radio" name="cookingType" value="S"> Saignant</label>
-                    <label><input type="radio" name="cookingType" value="AP"> À Point</label>
-                    <label><input type="radio" name="cookingType" value="BC"> Bien Cuit</label>
-                </div>
-                <button id="create-order-btn" disabled>Créer la commande</button>
-                <p id="manager-order-creation-message" class="info-message"></p>
-            </div>
-
             <div class="search-area">
-                <input type="text" id="pin-search-input" placeholder="Rechercher par Nom ou N° de commande">
+                <input type="text" id="pin-search-input" placeholder="Rechercher un PIN...">
             </div>
             <div id="orders-list">
                 <p>Aucune commande en cours.</p>
@@ -50,5 +31,21 @@
         </div>
     </div>
     <script type="module" src="app.js"></script>
+    <script>
+        // Script pour gérer l'appui sur la touche "Entrée" pour la connexion Manager
+        document.addEventListener('DOMContentLoaded', () => {
+            const managerPinInput = document.getElementById('manager-pin-input');
+            const managerLoginBtn = document.getElementById('manager-login-btn');
+
+            if (managerPinInput && managerLoginBtn) {
+                managerPinInput.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter') {
+                        event.preventDefault(); // Empêche le comportement par défaut (e.g., soumission de formulaire)
+                        managerLoginBtn.click(); // Simule un clic sur le bouton de connexion
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>
