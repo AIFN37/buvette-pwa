@@ -18,10 +18,10 @@ const LOCAL_STORAGE_PINS_KEY = 'buvettePwaGuestPins'; // Clé pour stocker un ta
 // --- Fonctions Utilitaires Générales ---
 
 /**
- * Génère un PIN alphanumérique de 4 caractères.
- * @returns {string} Le PIN généré.
+ * Génère une référence alphanumérique de 4 caractères.
+ * @returns {string} La référence générée.
  */
-function generatePin() {
+function generatePin() { // Renommé generatePin pour rester cohérent avec l'usage interne
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
     for (let i = 0; i < 4; i++) {
@@ -77,7 +77,7 @@ onMessage(messaging, (payload) => {
     // Jouer le son
     playNotificationSound();
 
-    // Mettre à jour l'interface du Guest si c'est la page active et que le PIN correspond
+    // Mettre à jour l'interface du Guest si c'est la page active et que la référence de commande correspond
     if (window.location.pathname.endsWith('guest.html')) {
         // Déclenche une mise à jour complète de la liste des commandes du Guest
         // Cela va re-rendre toutes les commandes et mettre à jour les statuts/comptes à rebours
@@ -106,10 +106,10 @@ if (window.location.pathname.endsWith('guest.html')) {
     let currentOnConfirmCallback = null;
     let currentOnCancelCallback = null;
 
-    let guestPins = []; // Tableau pour stocker les PINs du client
-    let guestOrdersData = {}; // Objet pour stocker les données complètes des commandes par PIN
-    let unsubscribeGuestOrders = {}; // Objet pour stocker les fonctions de désabonnement par PIN
-    let countdownIntervals = {}; // Objet pour stocker les intervalles de compte à rebours par PIN
+    let guestPins = []; // Tableau pour stocker les références de commande du client
+    let guestOrdersData = {}; // Objet pour stocker les données complètes des commandes par référence
+    let unsubscribeGuestOrders = {}; // Objet pour stocker les fonctions de désabonnement par référence
+    let countdownIntervals = {}; // Objet pour stocker les intervalles de compte à rebours par référence
 
     // Mappage des abréviations de cuisson aux noms complets et classes CSS
     const cookingTypesMap = {
@@ -210,7 +210,7 @@ if (window.location.pathname.endsWith('guest.html')) {
         sortedOrders.forEach(order => {
             const orderItem = document.createElement('div');
             orderItem.classList.add('guest-order-item'); // Classe pour le style
-            orderItem.dataset.pin = order.pin; // Stocke le PIN comme attribut de données
+            orderItem.dataset.pin = order.pin; // Stocke la référence comme attribut de données
 
             const cookingInfo = cookingTypesMap[order.cookingType] || { name: 'Inconnu', class: '' };
 
@@ -246,7 +246,7 @@ if (window.location.pathname.endsWith('guest.html')) {
                 stopCountdown(order.pin); // Arrête le compte à rebours si tour perdu
             }
 
-            // Structure comme décrit : PIN (2 lignes), Cuisson, Statut + Timestamp, Compte à rebours
+            // Structure comme décrit : Référence (2 lignes), Cuisson, Statut + Timestamp, Compte à rebours
             orderItem.innerHTML = `
                 <div class="order-grid">
                     <div class="pin-cell">
@@ -270,11 +270,11 @@ if (window.location.pathname.endsWith('guest.html')) {
 
     /**
      * Démarre le compte à rebours pour une commande spécifique.
-     * @param {string} pin - Le PIN de la commande.
+     * @param {string} pin - La référence de la commande.
      * @param {object} readyTimestamp - Le timestamp Firestore (ou ms) quand la commande est devenue prête.
      */
     function startCountdown(pin, readyTimestamp) {
-        // Efface tout intervalle existant pour ce PIN
+        // Efface tout intervalle existant pour cette référence
         if (countdownIntervals[pin]) {
             clearInterval(countdownIntervals[pin]);
         }
@@ -303,8 +303,8 @@ if (window.location.pathname.endsWith('guest.html')) {
     }
 
     /**
-     * Arrête le compte à rebours pour un PIN donné.
-     * @param {string} pin - Le PIN de la commande.
+     * Arrête le compte à rebours pour une référence donnée.
+     * @param {string} pin - La référence de la commande.
      */
     function stopCountdown(pin) {
         if (countdownIntervals[pin]) {
@@ -313,36 +313,43 @@ if (window.location.pathname.endsWith('guest.html')) {
         }
     }
 
+    // Rend la saisie du PIN en MAJUSCULES
+    if (guestPinInput) {
+        guestPinInput.addEventListener('input', (event) => {
+            event.target.value = event.target.value.toUpperCase();
+        });
+    }
+
     /**
-     * Gère l'ajout d'un PIN par le client.
+     * Gère l'ajout d'une référence par le client.
      */
     addPinBtn.addEventListener('click', async () => {
         const pin = guestPinInput.value.trim().toUpperCase();
         pinErrorMessage.innerText = ''; // Efface les erreurs précédentes
 
         if (pin.length !== 4) {
-            pinErrorMessage.innerText = 'Le PIN doit contenir 4 caractères.';
+            pinErrorMessage.innerText = 'La référence doit contenir 4 caractères.';
             return;
         }
 
         if (guestPins.includes(pin)) {
-            pinErrorMessage.innerText = 'Ce PIN est déjà suivi sur cet appareil.';
+            pinErrorMessage.innerText = 'Cette référence est déjà suivie sur cet appareil.';
             return;
         }
 
-        // Vérifier si le PIN existe dans Firestore
+        // Vérifier si la référence existe dans Firestore
         const q = query(collection(db, "orders"), where("pin", "==", pin), limit(1));
         try {
             const querySnapshot = await getDocs(q);
             if (querySnapshot.empty) {
-                pinErrorMessage.innerText = 'PIN non trouvé. Veuillez vérifier.';
+                pinErrorMessage.innerText = 'Référence non trouvée. Veuillez vérifier.';
                 return;
             }
 
             const docSnapshot = querySnapshot.docs[0];
             const orderId = docSnapshot.id;
 
-            // Ajouter le PIN à la liste locale et le sauvegarder
+            // Ajouter la référence à la liste locale et la sauvegarder
             guestPins.push(pin);
             localStorage.setItem(LOCAL_STORAGE_PINS_KEY, JSON.stringify(guestPins));
 
@@ -353,21 +360,21 @@ if (window.location.pathname.endsWith('guest.html')) {
             renderGuestOrders(); // Met à jour l'affichage
             requestNotificationPermissionAndGetToken(); // Demande les permissions si ce n'est pas déjà fait
         } catch (error) {
-            console.error("Erreur lors de la vérification du PIN :", error);
-            showConfirmationModal("Erreur lors de la vérification du PIN. Veuillez réessayer.", () => {}, () => { window.location.href = 'index.html'; });
+            console.error("Erreur lors de la vérification de la référence :", error);
+            showConfirmationModal("Erreur lors de la vérification de la référence. Veuillez réessayer.", () => {}, () => { window.location.href = 'index.html'; });
         }
     });
 
     /**
-     * Gère le nettoyage de tous les PINs suivis par le client.
+     * Gère le nettoyage de toutes les références suivies par le client.
      */
     clearAllPinsBtn.addEventListener('click', () => {
         if (guestPins.length === 0) {
-            showConfirmationModal("Aucun PIN à nettoyer.", () => {});
+            showConfirmationModal("Aucune référence à nettoyer.", () => {});
             return;
         }
 
-        showConfirmationModal("Voulez-vous vraiment effacer tous les PINs suivis sur cet appareil ?", () => {
+        showConfirmationModal("Voulez-vous vraiment effacer toutes les références de commande suivies sur cet appareil ?", () => {
             // Désabonner toutes les écoutes Firestore
             for (const orderId in unsubscribeGuestOrders) {
                 if (unsubscribeGuestOrders[orderId]) {
@@ -382,12 +389,12 @@ if (window.location.pathname.endsWith('guest.html')) {
             }
             countdownIntervals = {}; // Réinitialise l'objet
 
-            guestPins = []; // Vide le tableau de PINs
+            guestPins = []; // Vide le tableau de références
             guestOrdersData = {}; // Vide les données des commandes
             localStorage.removeItem(LOCAL_STORAGE_PINS_KEY); // Supprime du localStorage
 
             renderGuestOrders(); // Met à jour l'affichage (devrait afficher "Aucune commande...")
-            console.log("Tous les PINs et données locales du Guest ont été nettoyés.");
+            console.log("Toutes les références de commande et données locales du Guest ont été nettoyées.");
         });
     });
 
@@ -395,7 +402,7 @@ if (window.location.pathname.endsWith('guest.html')) {
     /**
      * Démarre l'écoute Firestore pour une commande spécifique du Guest.
      * @param {string} orderId - L'ID du document Firestore.
-     * @param {string} pin - Le PIN de la commande.
+     * @param {string} pin - La référence de la commande.
      */
     function startListeningToGuestOrder(orderId, pin) {
         // Si une écoute existe déjà pour cet ID, la désabonner d'abord
@@ -410,28 +417,28 @@ if (window.location.pathname.endsWith('guest.html')) {
                 renderGuestOrders(); // Re-rend la liste entière avec les données mises à jour
             } else {
                 // La commande a été supprimée de Firestore (par exemple, par le Manager ou une annulation)
-                console.log(`Commande ${pin} (${orderId}) n'existe plus dans Firestore.`);
-                guestPins = guestPins.filter(p => p !== pin); // Supprime le PIN de la liste locale
+                console.log(`Commande avec référence ${pin} (${orderId}) n'existe plus dans Firestore.`);
+                guestPins = guestPins.filter(p => p !== pin); // Supprime la référence de la liste locale
                 localStorage.setItem(LOCAL_STORAGE_PINS_KEY, JSON.stringify(guestPins));
                 delete guestOrdersData[pin]; // Supprime les données de l'objet local
                 stopCountdown(pin); // Arrête le compte à rebours associé
                 renderGuestOrders(); // Met à jour l'affichage
             }
         }, (error) => {
-            console.error(`Erreur lors de l'écoute de la commande ${pin} (${orderId}) :`, error);
+            console.error(`Erreur lors de la recherche de la commande pour la référence ${pin}:`, error);
             showConfirmationModal("Erreur de connexion à une commande. Veuillez réessayer.", () => {}, () => { window.location.href = 'index.html'; });
         });
     }
 
     /**
-     * Initialise l'application Guest : charge les PINs stockés et démarre les écoutes Firestore.
+     * Initialise l'application Guest : charge les références stockées et démarre les écoutes Firestore.
      */
     async function initializeGuestApp() {
-        // Récupère les PINs stockés
+        // Récupère les références stockées
         const storedPins = JSON.parse(localStorage.getItem(LOCAL_STORAGE_PINS_KEY) || '[]');
-        guestPins = storedPins; // Met à jour la liste globale des PINs
+        guestPins = storedPins; // Met à jour la liste globale des références
 
-        // Pour chaque PIN, démarre une écoute Firestore
+        // Pour chaque référence, démarre une écoute Firestore
         // Utilise Promise.all pour attendre que toutes les requêtes soient terminées
         const promises = guestPins.map(async (pin) => {
             const q = query(collection(db, "orders"), where("pin", "==", pin), limit(1));
@@ -441,14 +448,14 @@ if (window.location.pathname.endsWith('guest.html')) {
                     const docSnapshot = querySnapshot.docs[0];
                     startListeningToGuestOrder(docSnapshot.id, pin);
                 } else {
-                    console.warn(`PIN ${pin} trouvé dans localStorage mais pas de commande correspondante dans Firestore. Suppression.`);
-                    return pin; // Retourne le PIN pour le filtrer plus tard
+                    console.warn(`Référence ${pin} trouvée dans localStorage mais pas de commande correspondante dans Firestore. Suppression.`);
+                    return pin; // Retourne la référence pour la filtrer plus tard
                 }
             } catch (error) {
-                console.error(`Erreur lors de la recherche de la commande pour le PIN ${pin}:`, error);
-                return pin; // Retourne le PIN pour le filtrer en cas d'erreur
+                console.error(`Erreur lors de la recherche de la commande pour la référence ${pin}:`, error);
+                return pin; // Retourne la référence pour la filtrer en cas d'erreur
             }
-            return null; // Pas d'erreur, pas de PIN à filtrer
+            return null; // Pas d'erreur, pas de référence à filtrer
         });
 
         const pinsToRemove = (await Promise.all(promises)).filter(p => p !== null);
@@ -547,23 +554,23 @@ if (window.location.pathname.endsWith('manager.html')) {
         'B': 'b'
     };
 
-    let managerPin = MANAGER_DEFAULT_PIN; // PIN par défaut, sera mis à jour depuis Firestore
+    let managerPin = MANAGER_DEFAULT_PIN; // Référence Manager par défaut, sera mis à jour depuis Firestore
     let allOrders = []; // Nouvelle variable pour stocker toutes les commandes récupérées
-    let currentGeneratedPin = null; // Pour stocker le PIN généré pour la nouvelle commande
+    let currentGeneratedPin = null; // Pour stocker la référence générée pour la nouvelle commande
 
     /**
-     * Charge le PIN Manager depuis Firestore ou le crée s'il n'existe pas.
+     * Charge la Référence Manager depuis Firestore ou la crée s'il n'existe pas.
      */
     async function loadManagerPin() {
         const docRef = doc(db, "config", MANAGER_PIN_DOC_ID);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
             managerPin = docSnap.data().pin;
-            console.log("PIN Manager chargé depuis Firestore:", managerPin);
+            console.log("Référence Manager chargée depuis Firestore:", managerPin);
         } else {
-            // Créer le document avec le PIN par défaut si non trouvé
+            // Créer le document avec la Référence par défaut si non trouvé
             await setDoc(docRef, { pin: MANAGER_DEFAULT_PIN });
-            console.log("PIN Manager par défaut créé dans Firestore:", MANAGER_DEFAULT_PIN);
+            console.log("Référence Manager par défaut créée dans Firestore:", MANAGER_DEFAULT_PIN);
         }
     }
 
@@ -589,11 +596,11 @@ if (window.location.pathname.endsWith('manager.html')) {
 
     // Gérer la connexion
     managerLoginBtn.addEventListener('click', async () => {
-        await loadManagerPin(); // Assurez-vous d'avoir le PIN à jour
+        await loadManagerPin(); // Assurez-vous d'avoir la référence à jour
         if (managerPinInput.value === managerPin) {
             showManagerDashboard();
         } else {
-            authErrorMessage.innerText = "Code PIN incorrect. Veuillez réessayer.";
+            authErrorMessage.innerText = "Référence Manager incorrecte. Veuillez réessayer.";
         }
     });
 
@@ -602,7 +609,7 @@ if (window.location.pathname.endsWith('manager.html')) {
      */
     async function createManagerOrder() {
         if (!currentGeneratedPin) {
-            managerOrderCreationMessage.innerText = "Veuillez générer un PIN d'abord.";
+            managerOrderCreationMessage.innerText = "Veuillez générer une référence d'abord.";
             return;
         }
 
@@ -623,10 +630,10 @@ if (window.location.pathname.endsWith('manager.html')) {
 
         try {
             await addDoc(collection(db, "orders"), newOrder);
-            managerOrderCreationMessage.innerText = `Commande ${currentGeneratedPin} créée avec succès !`;
-            console.log("Nouvelle commande Manager enregistrée avec PIN:", currentGeneratedPin);
-            currentGeneratedPin = null; // Réinitialiser le PIN généré
-            newPinDisplay.innerText = 'Générez un PIN';
+            managerOrderCreationMessage.innerText = `Commande avec référence ${currentGeneratedPin} créée avec succès !`;
+            console.log("Nouvelle commande Manager enregistrée avec référence:", currentGeneratedPin);
+            currentGeneratedPin = null; // Réinitialiser la référence générée
+            newPinDisplay.innerText = 'Générez une référence';
             createOrderBtn.disabled = true; // Désactiver le bouton de création
             // L'UI sera mise à jour via l'onSnapshot du manager dashboard
         } catch (error) {
@@ -695,7 +702,7 @@ if (window.location.pathname.endsWith('manager.html')) {
             : ordersToRender;
 
         if (filteredOrders.length === 0 && searchTerm) {
-            ordersList.innerHTML = `<p>Aucun PIN '${searchTerm}' trouvé.</p>`;
+            ordersList.innerHTML = `<p>Aucune référence '${searchTerm}' trouvée.</p>`;
             return;
         } else if (filteredOrders.length === 0 && !searchTerm) {
             ordersList.innerHTML = '<p>Aucune commande en cours.</p>';
@@ -736,7 +743,7 @@ if (window.location.pathname.endsWith('manager.html')) {
             }
 
 
-            // Le contenu de la ligne : PIN + Type de Cuisson (Abréviation colorée)
+            // Le contenu de la ligne : Référence + Type de Cuisson (Abréviation colorée)
             orderItem.innerHTML = `
                 <span class="pin">${order.pin}</span>
                 <span class="cooking-abbr ${cookingColorClass}">${order.cookingType}</span>
@@ -748,31 +755,31 @@ if (window.location.pathname.endsWith('manager.html')) {
                 const orderRef = doc(db, "orders", order.id);
                 if (order.status === 'client_draft') {
                     // Le manager peut valider une commande brouillon pour la passer en pending
-                    showManagerConfirmationModal(`Voulez-vous valider la commande brouillon ${order.pin} et la passer en préparation ?`, async () => {
+                    showManagerConfirmationModal(`Voulez-vous valider la commande brouillon avec référence ${order.pin} et la passer en préparation ?`, async () => {
                          await updateDoc(orderRef, { status: "pending" });
-                         console.log(`Commande ${order.pin} validée par le manager et passée en préparation.`);
+                         console.log(`Commande avec référence ${order.pin} validée par le manager et passée en préparation.`);
                     });
                 } else if (order.status === 'pending') {
                     // Passe à READY, la Cloud Function va envoyer la 1ère notification
-                    showManagerConfirmationModal(`Voulez-vous marquer la commande ${order.pin} comme PRÊTE ?`, async () => {
+                    showManagerConfirmationModal(`Voulez-vous marquer la commande avec référence ${order.pin} comme PRÊTE ?`, async () => {
                         await updateDoc(orderRef, {
                             status: "ready",
                             readyTimestamp: Date.now(), // Enregistre le timestamp de la mise en prêt
                             relanceCount: 0 // Réinitialise le compteur de relance
                         });
-                        console.log(`Commande ${order.pin} marquée comme PRÊTE.`);
+                        console.log(`Commande avec référence ${order.pin} marquée comme PRÊTE.`);
                     });
                 } else if (order.status === 'ready' || order.status === 'relance') {
                     // Passe à DELIVERED
-                    showManagerConfirmationModal(`Voulez-vous marquer la commande ${order.pin} comme LIVRÉE ?`, async () => {
+                    showManagerConfirmationModal(`Voulez-vous marquer la commande avec référence ${order.pin} comme LIVRÉE ?`, async () => {
                         await updateDoc(orderRef, { status: "delivered" });
-                        console.log(`Commande ${order.pin} marquée comme LIVRÉE.`);
+                        console.log(`Commande avec référence ${order.pin} marquée comme LIVRÉE.`);
                     });
                 } else if (order.status === 'delivered' || order.status === 'lost_turn') {
                     // Optionnel: Supprimer la commande une fois livrée/perdue
-                    showManagerConfirmationModal(`Voulez-vous archiver/supprimer la commande ${order.pin} (statut: ${displayStatusText}) ?`, async () => {
+                    showManagerConfirmationModal(`Voulez-vous archiver/supprimer la commande avec référence ${order.pin} (statut: ${displayStatusText}) ?`, async () => {
                         await deleteDoc(orderRef);
-                        console.log(`Commande ${order.pin} archivée/supprimée.`);
+                        console.log(`Commande avec référence ${order.pin} archivée/supprimée.`);
                     });
                 }
             });
@@ -786,7 +793,7 @@ if (window.location.pathname.endsWith('manager.html')) {
         renderOrdersList(allOrders, pinSearchInput.value.trim().toUpperCase());
     });
 
-    // Charger le PIN Manager au démarrage de la page Manager
+    // Charger la Référence Manager au démarrage de la page Manager
     loadManagerPin();
 }
 
