@@ -233,6 +233,59 @@ button:disabled {
     color: #007bff; /* Blue for countdown */
 }
 
+.actions-buttons { /* This is the container for Guest action buttons */
+    display: flex;
+    justify-content: center; /* Center buttons within their container */
+    gap: 8px; /* Space between buttons */
+    margin-top: 0; /* No top margin needed for inline buttons */
+}
+
+.guest-order-item .action-buttons button { /* Styling for individual buttons within Guest list */
+    width: 36px; /* Fixed width for square buttons */
+    height: 36px; /* Fixed height */
+    padding: 0; /* Remove padding as it's icon-only */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%; /* Make them circular */
+    font-size: 1.1em; /* Adjust icon size */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow */
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.guest-order-item .action-buttons .modify-btn {
+    background-color: #007bff; /* Blue for modify */
+    color: #fff;
+}
+.guest-order-item .action-buttons .modify-btn:hover {
+    background-color: #0056b3;
+}
+
+.guest-order-item .action-buttons .delete-btn {
+    background-color: #dc3545; /* Red for delete */
+    color: #fff;
+}
+.guest-order-item .action-buttons .delete-btn:hover {
+    background-color: #c82333;
+}
+
+.guest-order-item .action-buttons .validate-single-btn {
+    background-color: #28a745; /* Green for validate */
+    color: #fff;
+}
+.guest-order-item .action-buttons .validate-single-btn:hover {
+    background-color: #218838;
+}
+
+/* General disabled state for guest buttons */
+.guest-order-item .action-buttons button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    transform: none; /* No transform when disabled */
+    box-shadow: none; /* No shadow when disabled */
+}
+
+
 .actions-buttons {
     display: flex;
     justify-content: center;
@@ -334,10 +387,28 @@ button:disabled {
     transform: translateY(-1px);
 }
 
-.order-item .pin {
+/* New style for order info (PIN + Client Name) */
+.order-item .order-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 80px; /* Adjust as needed */
+}
+
+.order-item .pin-input {
     font-weight: bold;
     font-size: 1.2em;
-    min-width: 60px; /* Ensure Référence column has minimum width */
+    width: 80px; /* Fixed width for PIN input */
+    padding: 2px 5px;
+    margin-bottom: 2px;
+    text-align: center;
+}
+
+.order-item .client-name-input {
+    font-size: 0.85em;
+    color: #666;
+    width: 100px; /* Fixed width for client name input */
+    padding: 2px 5px;
 }
 
 /* New styles for cooking pastilles */
@@ -471,12 +542,12 @@ button:disabled {
 
 
 /* --- Order Status Colors (Manager & Guest) --- */
-.status-pending, .guest-order-item .pending { background-color: #e0f7fa; color: #17a2b8; } /* Light blue */
-.status-ready, .guest-order-item .ready { background-color: #d4edda; color: #28a745; } /* Light green */
-.status-relance, .guest-order-item .relance { background-color: #fff3cd; color: #ffc107; } /* Light yellow */
-.status-delivered, .guest-order-item .delivered { background-color: #f8d7da; color: #6c757d; } /* Light red, greyed out */
-.status-lost-turn, .guest-order-item .lost-turn { background-color: #f8d7da; color: #dc3545; } /* Light red */
-.status-client-draft, .guest-order-item .client-draft { background-color: #e2e3e5; color: #6c757d; } /* Light grey for client draft */
+.status-client-draft { background-color: #e2e3e5; color: #6c757d; } /* Light grey for client draft */
+.status-pending { background-color: #e0f7fa; color: #17a2b8; } /* Light blue */
+.status-ready { background-color: #d4edda; color: #28a745; } /* Light green */
+.status-relance { background-color: #fff3cd; color: #ffc107; } /* Light yellow */
+.status-delivered { background-color: #f8d7da; color: #6c757d; } /* Light red, greyed out */
+.status-lost-turn { background-color: #f8d7da; color: #dc3545; } /* Light red */
 
 
 /* --- Modal Styles --- */
@@ -543,9 +614,30 @@ button:disabled {
         font-size: 1.3em;
     }
 
-    .guest-order-item, .order-grid {
-        grid-template-columns: 1fr 1fr; /* Stack on small screens for better readability */
-        gap: 8px;
+    .guest-order-item {
+        grid-template-columns: 1fr; /* Stack elements on small screens */
+        gap: 5px; /* Reduce gap */
+        padding: 8px 10px; /* Adjust padding */
+    }
+
+    .guest-order-item .pin-display,
+    .guest-order-item .cooking-type,
+    .guest-order-item .status-message,
+    .guest-order-item .action-buttons {
+        width: 100%; /* Take full width */
+        text-align: center; /* Center text/buttons */
+    }
+
+    .guest-order-item .action-buttons {
+        justify-content: space-around; /* Distribute buttons evenly */
+        margin-top: 5px; /* Small margin above buttons */
+    }
+
+    .guest-order-item .action-buttons button {
+        width: 30%; /* Adjust width for 3 buttons in a row */
+        height: 36px;
+        font-size: 1em;
+        border-radius: 8px; /* Make them square again */
     }
 
     .pin-cell {
@@ -584,7 +676,9 @@ button:disabled {
         padding: 10px;
     }
 
-    .order-item .pin,
+    .order-item .order-info, /* New style for order info block */
+    .order-item .pin-input, /* Corrected to target input */
+    .order-item .client-name-input, /* Corrected to target input */
     .order-item .cooking-pastilles-container,
     .order-item .status-controls,
     .order-item .order-actions {
