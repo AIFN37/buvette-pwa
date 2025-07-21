@@ -1,3 +1,5 @@
+Voici le nouveau contenu pour votre fichier public/guest.html.
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -6,36 +8,29 @@
     <title>Buvette - Ma Commande</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="/manifest.json">
-    <!-- Font Awesome pour les icônes (si vous voulez des icônes plus élaborées) -->
+    <!-- Font Awesome pour les icônes -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
     <div class="container guest-container">
         <h1>Vos Commandes</h1>
 
-        <div id="create-order-section" class="card">
-            <h2>Nouvelle Commande</h2>
-            <div class="cooking-options">
-                <label><input type="radio" name="cookingType" value="BC" checked> Bien Cuit</label>
-                <label><input type="radio" name="cookingType" value="AP"> À Point</label>
-                <label><input type="radio" name="cookingType" value="S"> Saignant</label>
-                <label><input type="radio" name="cookingType" value="B"> Bleu</label>
-            </div>
-            <button id="add-order-btn">Ajouter une commande</button>
+        <div id="pin-input-section" class="card">
+            <h2>Saisir votre PIN</h2>
+            <input type="text" id="guest-pin-input" placeholder="Entrez votre code PIN" maxlength="4" autocomplete="off">
+            <button id="add-pin-btn">Ajouter ce PIN</button>
+            <p id="pin-error-message" class="error-message"></p>
         </div>
 
-        <div id="orders-list-section" class="card" style="display: none;">
-            <h2>Commandes en cours</h2>
+        <div id="guest-orders-display" class="card" style="display: none;">
+            <h2>Commandes suivies</h2>
             <div id="guest-orders-list">
                 <!-- Les commandes seront insérées ici par JavaScript -->
                 <p>Aucune commande ajoutée pour le moment.</p>
             </div>
             <div class="actions-buttons">
-                <button id="validate-all-orders-btn" class="validate-btn" style="display: none;">
-                    <i class="fas fa-check"></i> Valider toutes les commandes
-                </button>
-                <button id="cancel-all-orders-btn" class="cancel-btn" style="display: none;">
-                    <i class="fas fa-times"></i> Annuler tout
+                <button id="clear-all-pins-btn" class="cancel-btn">
+                    <i class="fas fa-trash-alt"></i> Nettoyer tous les PINs
                 </button>
             </div>
         </div>
