@@ -582,7 +582,6 @@ if (window.location.pathname.endsWith('manager.html')) {
     };
 
     let managerPin = MANAGER_DEFAULT_PIN; // PIN par défaut, sera mis à jour depuis Firestore
-    let allOrders = []; // Nouvelle variable pour stocker toutes les commandes récupérées
 
     // Map to store current UI state of cooking type and status for each order being edited
     // Key: order.id, Value: { originalCookingType, currentCookingType, originalStatus, currentStatus, originalClientName, currentClientName, originalPin, currentPin }
@@ -615,10 +614,16 @@ if (window.location.pathname.endsWith('manager.html')) {
 
     // Gérer la connexion
     managerLoginBtn.addEventListener('click', async () => {
-        await loadManagerPin(); // Assurez-vous d'avoir le PIN à jour
-        if (managerPinInput.value === managerPin) {
+        const enteredPin = managerPinInput.value.trim(); // Trim whitespace
+        console.log("Manager Login - Entered PIN:", enteredPin);
+        await loadManagerPin(); // Ensure managerPin is loaded
+        console.log("Manager Login - Loaded Manager PIN:", managerPin);
+
+        if (enteredPin === managerPin) { // Compare trimmed entered PIN with loaded PIN
+            console.log("Manager Login - PIN matched. Showing dashboard.");
             showManagerDashboard();
         } else {
+            console.log("Manager Login - PIN mismatch. Displaying error.");
             authErrorMessage.innerText = "Code PIN incorrect. Veuillez réessayer.";
         }
     });
