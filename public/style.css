@@ -325,7 +325,7 @@ button:disabled {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    cursor: pointer;
+    /* cursor: pointer; REMOVED to avoid confusion with new controls */
     transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
@@ -340,19 +340,45 @@ button:disabled {
     min-width: 60px; /* Ensure Référence column has minimum width */
 }
 
-.order-item .cooking-abbr {
-    font-weight: 600;
-    padding: 3px 8px;
-    border-radius: 5px;
-    font-size: 0.9em;
-    white-space: nowrap;
+/* New styles for cooking pastilles */
+.cooking-pastilles-container {
+    display: flex;
+    gap: 4px; /* Spacing between pastilles */
+    align-items: center;
+    flex-shrink: 0; /* Prevent shrinking */
+    padding: 0 5px; /* Small padding for visual separation */
 }
 
-.order-item .status-text {
-    font-weight: 500;
-    font-size: 0.95em;
-    flex-grow: 1; /* Allow status text to take available space */
-    text-align: right;
+.cooking-pastille {
+    width: 20px; /* Increased diameter for better visibility of checkmark */
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    border: 1px solid rgba(0,0,0,0.2); /* Subtle border */
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+    position: relative; /* For absolute positioning of checkmark */
+}
+
+.cooking-pastille:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 5px rgba(0,0,0,0.3);
+}
+
+.cooking-pastille .fa-check {
+    color: white; /* White checkmark */
+    font-size: 0.8em; /* Size of the checkmark */
+    visibility: hidden; /* Hidden by default */
+    position: absolute; /* Center the checkmark */
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.cooking-pastille.selected .fa-check {
+    visibility: visible; /* Show checkmark when selected */
 }
 
 /* Styles for Manager order actions buttons */
@@ -377,12 +403,16 @@ button:disabled {
 }
 
 /* Specific button colors */
-.order-item .order-actions .modify-order-btn {
-    background-color: #ffc107; /* Amber/Orange for modify - classic "warning" color */
+.order-item .order-actions .cancel-changes-btn { /* New button for "Annuler les modifications" */
+    background-color: #dc3545; /* Red for cancel */
     color: #fff;
 }
-.order-item .order-actions .modify-order-btn:hover {
-    background-color: #e0a800;
+.order-item .order-actions .cancel-changes-btn:hover {
+    background-color: #c82333;
+}
+.order-item .order-actions .cancel-changes-btn:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
 }
 
 .order-item .order-actions .validate-order-btn {
@@ -392,21 +422,53 @@ button:disabled {
 .order-item .order-actions .validate-order-btn:hover {
     background-color: #218838;
 }
+.order-item .order-actions .validate-order-btn:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
 
 .order-item .order-actions .delete-order-btn {
-    background-color: #dc3545; /* Red for delete - classic "danger" color */
+    background-color: #6c757d; /* Grey for delete (Trash) */
     color: #fff;
 }
 .order-item .order-actions .delete-order-btn:hover {
-    background-color: #c82333;
+    background-color: #5a6268;
 }
 
 
-/* --- Cooking Type Colors --- */
-.cooking-type.bc, .cooking-abbr.bc { background-color: #e8f5e9; color: #28a745; border: 1px solid #28a745; } /* Bien Cuit - Green */
-.cooking-type.ap, .cooking-abbr.ap { background-color: #fff3cd; color: #ffc107; border: 1px solid #ffc107; } /* À Point - Yellow */
-.cooking-type.s, .cooking-abbr.s { background-color: #f8d7da; color: #dc3545; border: 1px solid #dc3545; } /* Saignant - Red */
-.cooking-type.b, .cooking-abbr.b { background-color: #e0f7fa; color: #17a2b8; border: 1px solid #17a2b8; } /* Bleu - Cyan */
+/* Status controls (radio buttons) */
+.status-controls {
+    display: flex;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    gap: 8px; /* Space between radio buttons */
+    flex-grow: 1; /* Allow to take available space */
+    justify-content: flex-end; /* Align to the right */
+    align-items: center;
+    padding-right: 10px; /* Space before buttons */
+}
+
+.status-controls label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85em;
+    white-space: nowrap; /* Prevent text wrapping */
+    cursor: pointer;
+}
+
+.status-controls input[type="radio"] {
+    margin: 0; /* Reset default margin */
+    transform: scale(0.9); /* Slightly smaller radio buttons */
+    cursor: pointer;
+}
+
+/* --- Cooking Type Colors (for pastilles) --- */
+/* These map directly to the colors defined in app.js for cookingTypesColors */
+.cooking-pastille[data-cooking-type="B"] { background-color: #17a2b8; } /* Bleu */
+.cooking-pastille[data-cooking-type="S"] { background-color: #dc3545; } /* Saignant */
+.cooking-pastille[data-cooking-type="AP"] { background-color: #ffb6c1; } /* À Point */
+.cooking-pastille[data-cooking-type="BC"] { background-color: #8b4513; } /* Bien Cuit */
+
 
 /* --- Order Status Colors (Manager & Guest) --- */
 .status-pending, .guest-order-item .pending { background-color: #e0f7fa; color: #17a2b8; } /* Light blue */
@@ -496,11 +558,6 @@ button:disabled {
         font-size: 2em;
     }
 
-    .cooking-cell, .status-cell, .countdown-cell {
-        align-items: center; /* Center content when stacked */
-        text-align: center;
-    }
-
     .cooking-options {
         flex-direction: column;
         gap: 10px;
@@ -520,13 +577,48 @@ button:disabled {
         width: 100%;
     }
 
+    /* Manager order item layout on small screens */
+    .order-item {
+        flex-direction: column; /* Stack elements vertically */
+        align-items: flex-start; /* Align content to the left */
+        padding: 10px;
+    }
+
+    .order-item .pin,
+    .order-item .cooking-pastilles-container,
+    .order-item .status-controls,
     .order-item .order-actions {
-        flex-direction: column; /* Stack buttons on small screens */
+        width: 100%; /* Take full width */
+        justify-content: flex-start; /* Align content to the left */
+        margin-bottom: 5px; /* Add some spacing */
+    }
+
+    .order-item .cooking-pastilles-container {
+        justify-content: flex-start; /* Align pastilles to the left */
+    }
+
+    .order-item .status-controls {
+        flex-direction: column; /* Stack radio buttons */
+        align-items: flex-start;
+        padding-right: 0;
+    }
+
+    .status-controls label {
+        width: 100%;
+        margin-bottom: 5px;
+    }
+
+    .order-item .order-actions {
+        flex-direction: row; /* Keep action buttons in a row for small screens */
+        justify-content: space-around; /* Distribute horizontally */
         gap: 5px;
+        margin-top: 10px;
     }
 
     .order-item .order-actions button {
-        width: 100%; /* Full width when stacked */
-        border-radius: 8px; /* Square corners when stacked */
+        width: 30%; /* Adjust width for 3 buttons in a row */
+        height: 36px;
+        font-size: 1em;
+        border-radius: 8px; /* Make them square again */
     }
 }
