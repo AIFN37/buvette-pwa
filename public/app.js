@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, orderBy, limit, getDoc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-messaging.js";
+// CORRECTION ICI : Importation des fonctions Firestore depuis firebase-firestore.js
+import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, orderBy, limit, getDoc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-messaging.js";
 import { firebaseConfig } from './firebase-config.js'; // Chemin corrigé : le fichier firebase-config.js est dans le même dossier 'public'
 
@@ -725,7 +726,7 @@ if (window.location.pathname.endsWith('manager.html')) {
             activeOrders.sort((a, b) => {
                 const aTime = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate().getTime() : a.createdAt) : 0;
                 const bTime = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate().getTime() : b.createdAt) : 0;
-                return aTime - bBime;
+                return aTime - bTime; // Correction de la faute de frappe ici : bBime -> bTime
             });
 
             // Combiner les listes (actives d'abord, puis livrées/perdues)
