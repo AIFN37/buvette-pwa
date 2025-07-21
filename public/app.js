@@ -417,7 +417,7 @@ if (window.location.pathname.endsWith('guest.html')) {
                 }
             }
         });
-    }
+    });
 
     /**
      * Valide toutes les commandes en brouillon.
@@ -651,7 +651,7 @@ if (window.location.pathname.endsWith('manager.html')) {
     let allOrders = []; // Nouvelle variable pour stocker toutes les commandes récupérées
 
     // Map to store current UI state of cooking type and status for each order being edited
-    // Key: order.id, Value: { originalCookingType: 'AP', originalStatus: 'pending', currentCookingType: 'AP', currentStatus: 'pending' }
+    // Key: order.id, Value: { originalCookingType, currentCookingType, originalStatus, currentStatus, originalClientName, currentClientName, originalPin, currentPin }
     const orderEditState = new Map();
 
     /**
@@ -717,7 +717,7 @@ if (window.location.pathname.endsWith('manager.html')) {
      */
     async function createManagerOrder() {
         if (!currentGeneratedPin) {
-            managerOrderCreationMessage.innerText = "Veuillez générer une référence d'abord.";
+            managerOrderCreationMessage.innerText = "Veuillez générer un N° de commande d'abord.";
             return;
         }
 
@@ -741,10 +741,10 @@ if (window.location.pathname.endsWith('manager.html')) {
 
         try {
             await addDoc(collection(db, "orders"), newOrder);
-            managerOrderCreationMessage.innerText = `Commande avec référence ${currentGeneratedPin} pour ${clientName || 'N/A'} créée avec succès !`;
-            console.log("Nouvelle commande Manager enregistrée avec référence:", currentGeneratedPin, "et client:", clientName);
+            managerOrderCreationMessage.innerText = `Commande avec N° ${currentGeneratedPin} pour ${clientName || 'N/A'} créée avec succès !`;
+            console.log("Nouvelle commande Manager enregistrée avec N°:", currentGeneratedPin, "et client:", clientName);
             currentGeneratedPin = null; // Réinitialiser la référence générée
-            newPinDisplay.innerText = 'Générez une référence';
+            newPinDisplay.innerText = 'Générer un N° de commande'; // Mise à jour du libellé
             clientNameInput.value = ''; // Réinitialiser le champ nom client
             createOrderBtn.disabled = true; // Désactiver le bouton de création
             // L'UI sera mise à jour via l'onSnapshot du manager dashboard
@@ -775,7 +775,9 @@ if (window.location.pathname.endsWith('manager.html')) {
         }
 
         const hasChanges = (editState.currentCookingType !== editState.originalCookingType) ||
-                           (editState.currentStatus !== editState.originalStatus);
+                           (editState.currentStatus !== editState.originalStatus) ||
+                           (editState.currentClientName !== editState.originalClientName) ||
+                           (editState.currentPin !== editState.originalPin); // Check PIN changes
 
         validateBtn.disabled = !hasChanges;
         cancelBtn.disabled = !hasChanges;
@@ -809,16 +811,18 @@ if (window.location.pathname.endsWith('manager.html')) {
         if (currentEditState) {
             currentEditState.currentCookingType = selectedCookingType;
         } else {
-            // Should not happen if orderEditState is properly initialized in renderOrdersList
-            console.warn(`No edit state found for order ${orderId} during cooking type selection.`);
-            // Fallback: re-initialize edit state
+            // Fallback: re-initialize edit state (should not happen if renderOrdersList initializes correctly)
             const order = allOrders.find(o => o.id === orderId);
             if (order) {
                 orderEditState.set(order.id, {
                     originalCookingType: order.cookingType,
                     originalStatus: order.status,
-                    currentCookingType: selectedCookingType, // Use newly selected
-                    currentStatus: order.status // Keep original status
+                    originalClientName: order.clientName,
+                    originalPin: order.pin,
+                    currentCookingType: selectedCookingType,
+                    currentStatus: order.status,
+                    currentClientName: order.clientName,
+                    currentPin: order.pin
                 });
             }
         }
@@ -836,14 +840,72 @@ if (window.location.pathname.endsWith('manager.html')) {
         if (currentEditState) {
             currentEditState.currentStatus = selectedStatus;
         } else {
-            // Fallback: re-initialize edit state
+            // Fallback: re-initialize edit state (should not happen if renderOrdersList initializes correctly)
             const order = allOrders.find(o => o.id === orderId);
             if (order) {
                 orderEditState.set(order.id, {
                     originalCookingType: order.cookingType,
                     originalStatus: order.status,
-                    currentCookingType: order.cookingType, // Keep original cooking type
-                    currentStatus: selectedStatus // Use newly selected
+                    originalClientName: order.clientName,
+                    originalPin: order.pin,
+                    currentCookingType: order.cookingType,
+                    currentStatus: selectedStatus,
+                    currentClientName: order.clientName,
+                    currentPin: order.pin
+                });
+            }
+        }
+        checkAndToggleValidateButton(orderId);
+    }
+
+    /**
+     * Gère le changement du nom du client.
+     * @param {string} orderId - L'ID de la commande.
+     * @param {string} newClientName - Le nouveau nom du client.
+     */
+    function handleClientNameChange(orderId, newClientName) {
+        const currentEditState = orderEditState.get(orderId);
+        if (currentEditState) {
+            currentEditState.currentClientName = newClientName.trim();
+        } else {
+            const order = allOrders.find(o => o.id === orderId);
+            if (order) {
+                orderEditState.set(order.id, {
+                    originalCookingType: order.cookingType,
+                    originalStatus: order.status,
+                    originalClientName: order.clientName,
+                    originalPin: order.pin,
+                    currentCookingType: order.cookingType,
+                    currentStatus: order.status,
+                    currentClientName: newClientName.trim(),
+                    currentPin: order.pin
+                });
+            }
+        }
+        checkAndToggleValidateButton(orderId);
+    }
+
+    /**
+     * Gère le changement du PIN de la commande.
+     * @param {string} orderId - L'ID de la commande.
+     * @param {string} newPin - Le nouveau PIN.
+     */
+    function handlePinChange(orderId, newPin) {
+        const currentEditState = orderEditState.get(orderId);
+        if (currentEditState) {
+            currentEditState.currentPin = newPin.trim().toUpperCase();
+        } else {
+            const order = allOrders.find(o => o.id === orderId);
+            if (order) {
+                orderEditState.set(order.id, {
+                    originalCookingType: order.cookingType,
+                    originalStatus: order.status,
+                    originalClientName: order.clientName,
+                    originalPin: order.pin,
+                    currentCookingType: order.cookingType,
+                    currentStatus: order.status,
+                    currentClientName: order.clientName,
+                    currentPin: newPin.trim().toUpperCase()
                 });
             }
         }
@@ -865,20 +927,14 @@ if (window.location.pathname.endsWith('manager.html')) {
         // Revert current state to original state in the map
         editState.currentCookingType = editState.originalCookingType;
         editState.currentStatus = editState.originalStatus;
+        editState.currentClientName = editState.originalClientName;
+        editState.currentPin = editState.originalPin;
 
         // Re-render this specific order item to reflect the reverted state
         // This is a bit of a hack as it re-renders only one item, but it's simpler than re-rendering the whole list.
         // A full re-render (calling renderOrdersList) would also work but might be less performant for single item changes.
-        const order = allOrders.find(o => o.id === orderId);
-        if (order) {
-            // Temporarily remove the item, then re-add it with updated display
-            const parent = orderItemElement.parentNode;
-            parent.removeChild(orderItemElement);
-            // Re-add it by calling renderOrdersList with just this order, or rebuild its HTML directly
-            // For simplicity and consistency with onSnapshot, let's just trigger a full re-render
-            // This will ensure all buttons are correctly re-evaluated.
-            renderOrdersList(allOrders, pinSearchInput.value.trim().toUpperCase());
-        }
+        // For simplicity and consistency with onSnapshot, let's just trigger a full re-render
+        renderOrdersList(allOrders, pinSearchInput.value.trim().toUpperCase());
         // The checkAndToggleValidateButton will be called during renderOrdersList, disabling the buttons
     }
 
@@ -903,15 +959,38 @@ if (window.location.pathname.endsWith('manager.html')) {
 
         const newCookingType = editState.currentCookingType;
         const newStatus = editState.currentStatus;
+        const newClientName = editState.currentClientName === '' ? 'N/A' : editState.currentClientName; // Handle empty client name
+        const newPin = editState.currentPin;
 
-        if (!newCookingType || !newStatus) {
-            showManagerConfirmationModal("Veuillez sélectionner un type de cuisson et un statut pour la commande avant de valider.", () => {});
+        if (!newCookingType || !newStatus || !newPin) {
+            showManagerConfirmationModal("Veuillez sélectionner un type de cuisson, un statut et un N° de commande valide avant de valider.", () => {});
             return;
         }
 
+        // --- Vérification d'unicité du PIN ---
+        if (newPin !== editState.originalPin) { // Seulement si le PIN a été modifié
+            const q = query(collection(db, "orders"), where("pin", "==", newPin));
+            try {
+                const querySnapshot = await getDocs(q);
+                const existingOrderWithNewPin = querySnapshot.docs.find(doc => doc.id !== orderId);
+                if (existingOrderWithNewPin) {
+                    showManagerConfirmationModal(`Le N° de commande "${newPin}" est déjà utilisé par une autre commande. Veuillez en choisir un autre.`, () => {});
+                    return;
+                }
+            } catch (error) {
+                console.error("Erreur lors de la vérification d'unicité du PIN :", error);
+                showManagerConfirmationModal("Erreur lors de la vérification du N° de commande. Veuillez réessayer.", () => {});
+                return;
+            }
+        }
+        // --- Fin Vérification d'unicité ---
+
+
         const updateData = {
             cookingType: newCookingType,
-            status: newStatus
+            status: newStatus,
+            clientName: newClientName,
+            pin: newPin // Mettre à jour le PIN
         };
 
         // Handle specific status transitions for timestamps/relanceCount
@@ -928,7 +1007,7 @@ if (window.location.pathname.endsWith('manager.html')) {
 
         try {
             await updateDoc(orderRef, updateData);
-            console.log(`Commande ${orderId} mise à jour (Cuisson: ${newCookingType}, Statut: ${newStatus}).`);
+            console.log(`Commande ${orderId} mise à jour (Cuisson: ${newCookingType}, Statut: ${newStatus}, Client: ${newClientName}, PIN: ${newPin}).`);
             orderEditState.delete(orderId); // Clear edit state after successful save
             // The onSnapshot listener will trigger renderOrdersList, which will then disable the buttons
             // as the Firestore data now matches the "original" state.
@@ -1044,20 +1123,31 @@ if (window.location.pathname.endsWith('manager.html')) {
                 editState = {
                     originalCookingType: order.cookingType,
                     originalStatus: order.status,
+                    originalClientName: order.clientName || 'N/A', // Ensure it's never undefined
+                    originalPin: order.pin,
                     currentCookingType: order.cookingType,
-                    currentStatus: order.status
+                    currentStatus: order.status,
+                    currentClientName: order.clientName || 'N/A',
+                    currentPin: order.pin
                 };
                 orderEditState.set(order.id, editState);
             } else {
                 // If the Firestore data for this order has changed (e.g., from another manager or cloud function)
                 // and it's different from our current local edits, then we should reset our local edits
                 // to match the new Firestore data.
-                if (editState.currentCookingType !== order.cookingType || editState.currentStatus !== order.status) {
+                if (editState.originalCookingType !== order.cookingType ||
+                    editState.originalStatus !== order.status ||
+                    editState.originalClientName !== (order.clientName || 'N/A') || // Compare with actual Firestore value
+                    editState.originalPin !== order.pin) { // Compare with actual Firestore value
+
                     editState.originalCookingType = order.cookingType;
                     editState.originalStatus = order.status;
+                    editState.originalClientName = order.clientName || 'N/A';
+                    editState.originalPin = order.pin;
                     editState.currentCookingType = order.cookingType;
                     editState.currentStatus = order.status;
-                    // We don't delete from orderEditState here, just sync it.
+                    editState.currentClientName = order.clientName || 'N/A';
+                    editState.currentPin = order.pin;
                 }
             }
 
@@ -1105,8 +1195,8 @@ if (window.location.pathname.endsWith('manager.html')) {
             // Contenu de la ligne : Référence + Nom Client + Pastilles de cuisson + Radio boutons de statut + Boutons d'action
             orderItem.innerHTML = `
                 <div class="order-info">
-                    <span class="pin">${order.pin}</span>
-                    <span class="client-name">${order.clientName || 'N/A'}</span>
+                    <input type="text" class="pin-input" value="${editState.currentPin}" data-order-id="${order.id}" maxlength="4">
+                    <input type="text" class="client-name-input" value="${editState.currentClientName === 'N/A' ? '' : editState.currentClientName}" data-order-id="${order.id}" placeholder="Nom du client">
                 </div>
                 <div class="cooking-pastilles-container">
                     ${cookingPastillesHtml}
@@ -1149,6 +1239,22 @@ if (window.location.pathname.endsWith('manager.html')) {
                     handleStatusChange(order.id, radio.value);
                 });
             });
+
+            // Attacher les écouteurs d'événements aux champs de texte (PIN et Nom Client)
+            const pinInput = orderItem.querySelector('.pin-input');
+            const clientNameInput = orderItem.querySelector('.client-name-input');
+
+            if (pinInput) {
+                pinInput.addEventListener('input', (e) => {
+                    e.target.value = e.target.value.toUpperCase(); // Force uppercase
+                    handlePinChange(order.id, e.target.value);
+                });
+            }
+            if (clientNameInput) {
+                clientNameInput.addEventListener('input', (e) => {
+                    handleClientNameChange(order.id, e.target.value);
+                });
+            }
 
             // Attacher les écouteurs d'événements aux boutons d'action
             const cancelBtn = orderItem.querySelector('.cancel-changes-btn');
