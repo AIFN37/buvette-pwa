@@ -96,7 +96,7 @@ if (window.location.pathname.endsWith('guest.html')) {
     const guestOrdersList = document.getElementById('guest-orders-list');
     const clearAllPinsBtn = document.getElementById('clear-all-pins-btn');
 
-    // MODAL ELEMENTS
+    // MODAL ELEMENTS - Déclarées en const car ce sont des références fixes aux éléments DOM
     const confirmationModal = document.getElementById('confirmation-modal');
     const modalMessage = document.getElementById('modal-message');
     const modalConfirmBtn = document.getElementById('modal-confirm-btn');
@@ -484,6 +484,56 @@ if (window.location.pathname.endsWith('manager.html')) {
     const ordersList = document.getElementById('orders-list');
     const pinSearchInput = document.getElementById('pin-search-input');
 
+    // MODAL ELEMENTS (références globales, mais ajoutées ici pour clarté dans le module Manager)
+    const confirmationModal = document.getElementById('confirmation-modal');
+    const modalMessage = document.getElementById('modal-message');
+    const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+
+    // Variables pour stocker les callbacks actuels de la modale (pour le Manager aussi)
+    let currentOnConfirmCallback = null;
+    let currentOnCancelCallback = null;
+
+    // Fonctions de gestion de la modale (répétées ici pour la clarté, mais pourraient être globales si elles sont les mêmes)
+    function handleManagerConfirmClick() {
+        console.log("handleManagerConfirmClick triggered.");
+        confirmationModal.style.display = 'none';
+        if (currentOnConfirmCallback) {
+            currentOnConfirmCallback();
+        }
+        currentOnConfirmCallback = null;
+        currentOnCancelCallback = null;
+    }
+
+    function handleManagerCancelClick() {
+        console.log("handleManagerCancelClick triggered.");
+        confirmationModal.style.display = 'none';
+        if (currentOnCancelCallback) {
+            currentOnCancelCallback();
+        }
+        currentOnConfirmCallback = null;
+        currentOnCancelCallback = null;
+    }
+
+    // Attache les écouteurs pour la modale du Manager une seule fois
+    if (modalConfirmBtn && modalCancelBtn) {
+        modalConfirmBtn.addEventListener('click', handleManagerConfirmClick);
+        modalCancelBtn.addEventListener('click', handleManagerCancelClick);
+        console.log("Manager Modal listeners attached globally.");
+    } else {
+        console.error("Un ou plusieurs boutons de la modale du Manager (confirmer/annuler) n'ont pas été trouvés. Impossible d'attacher les écouteurs.");
+    }
+
+    // Fonction showConfirmationModal spécifique ou réutilisée (ici, réutilisée)
+    function showManagerConfirmationModal(message, onConfirmCallback, onCancelCallback = () => {}) {
+        modalMessage.innerText = message;
+        confirmationModal.style.display = 'flex';
+        currentOnConfirmCallback = onConfirmCallback;
+        currentOnCancelCallback = onCancelCallback;
+        console.log("Manager Modal affichée. Attente d'interaction...");
+    }
+
+
     const cookingAbbrMap = {
         'BC': 'Bien Cuit',
         'AP': 'À Point',
@@ -698,13 +748,13 @@ if (window.location.pathname.endsWith('manager.html')) {
                 const orderRef = doc(db, "orders", order.id);
                 if (order.status === 'client_draft') {
                     // Le manager peut valider une commande brouillon pour la passer en pending
-                    showConfirmationModal(`Voulez-vous valider la commande brouillon ${order.pin} et la passer en préparation ?`, async () => {
+                    showManagerConfirmationModal(`Voulez-vous valider la commande brouillon ${order.pin} et la passer en préparation ?`, async () => {
                          await updateDoc(orderRef, { status: "pending" });
                          console.log(`Commande ${order.pin} validée par le manager et passée en préparation.`);
                     });
                 } else if (order.status === 'pending') {
                     // Passe à READY, la Cloud Function va envoyer la 1ère notification
-                    showConfirmationModal(`Voulez-vous marquer la commande ${order.pin} comme PRÊTE ?`, async () => {
+                    showManagerConfirmationModal(`Voulez-vous marquer la commande ${order.pin} comme PRÊTE ?`, async () => {
                         await updateDoc(orderRef, {
                             status: "ready",
                             readyTimestamp: Date.now(), // Enregistre le timestamp de la mise en prêt
@@ -714,13 +764,13 @@ if (window.location.pathname.endsWith('manager.html')) {
                     });
                 } else if (order.status === 'ready' || order.status === 'relance') {
                     // Passe à DELIVERED
-                    showConfirmationModal(`Voulez-vous marquer la commande ${order.pin} comme LIVRÉE ?`, async () => {
+                    showManagerConfirmationModal(`Voulez-vous marquer la commande ${order.pin} comme LIVRÉE ?`, async () => {
                         await updateDoc(orderRef, { status: "delivered" });
                         console.log(`Commande ${order.pin} marquée comme LIVRÉE.`);
                     });
                 } else if (order.status === 'delivered' || order.status === 'lost_turn') {
                     // Optionnel: Supprimer la commande une fois livrée/perdue
-                    showConfirmationModal(`Voulez-vous archiver/supprimer la commande ${order.pin} (statut: ${displayStatusText}) ?`, async () => {
+                    showManagerConfirmationModal(`Voulez-vous archiver/supprimer la commande ${order.pin} (statut: ${displayStatusText}) ?`, async () => {
                         await deleteDoc(orderRef);
                         console.log(`Commande ${order.pin} archivée/supprimée.`);
                     });
