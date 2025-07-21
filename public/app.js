@@ -1,7 +1,8 @@
-// ✅ Nouveau fichier app.js complet, avec améliorations et corrections selon l'audit
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, orderBy, limit, getDoc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+import {
+    getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where,
+    orderBy, limit, getDoc, setDoc, getDocs
+} from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-messaging.js";
 import { firebaseConfig } from './firebase-config.js';
 
@@ -28,7 +29,9 @@ async function requestNotificationPermissionAndGetToken() {
     try {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-            const token = await getToken(messaging, { vapidKey: 'BOfarRrQ23arrM__eUBYL4RcP_wJDiP6gMRX8hqxwk8K4SeN1mSYqIplsq4nm0lXcMnJjHED6HSHB_J2iovTgAY' });
+            const token = await getToken(messaging, {
+                vapidKey: 'BOfarRrQ23arrM__eUBYL4RcP_wJDiP6gMRX8hqxwk8K4SeN1mSYqIplsq4nm0lXcMnJjHED6HSHB_J2iovTgAY'
+            });
             return token;
         } else {
             return null;
@@ -56,6 +59,7 @@ onMessage(messaging, (payload) => {
 function encodePins(pins) {
     return btoa(JSON.stringify(pins));
 }
+
 function decodePins(encoded) {
     try {
         return JSON.parse(atob(encoded));
@@ -69,8 +73,8 @@ function showSafeModal(message, onConfirm = () => {}, onCancel = null) {
     const modalMessage = document.getElementById('modal-message');
     const modalConfirmBtn = document.getElementById('modal-confirm-btn');
     const modalCancelBtn = document.getElementById('modal-cancel-btn');
-    
-    if (!confirmationModal) {
+
+    if (!confirmationModal || !modalMessage || !modalConfirmBtn) {
         alert(message);
         onConfirm();
         return;
@@ -97,22 +101,11 @@ function showSafeModal(message, onConfirm = () => {}, onCancel = null) {
     if (modalCancelBtn) modalCancelBtn.addEventListener('click', cancelListener);
 }
 
-if (window.location.pathname.endsWith('guest.html')) {
-    // ... [Insérer ici le bloc complet déjà fonctionnel du module Guest]
-    // ... inclure les corrections suivantes :
-    // 1. Utiliser encodePins/decodePins pour localStorage
-    // 2. Nettoyer automatiquement les commandes livrées ou perdues
-    // 3. Utiliser showSafeModal à la place de showConfirmationModal
-    // 4. Ne jamais forcer la redirection vers index.html en cas d'erreur mineure
-}
-
 if (window.location.pathname.endsWith('manager.html')) {
-    // ... [Insérer ici le bloc complet déjà fonctionnel du module Manager]
-    // ... inclure les corrections suivantes :
-    // 1. Centraliser le listener Enter du login PIN dans app.js
     document.addEventListener('DOMContentLoaded', () => {
         const managerPinInput = document.getElementById('manager-pin-input');
         const managerLoginBtn = document.getElementById('manager-login-btn');
+
         if (managerPinInput && managerLoginBtn) {
             managerPinInput.addEventListener('keydown', (event) => {
                 if (event.key === 'Enter') {
@@ -122,13 +115,12 @@ if (window.location.pathname.endsWith('manager.html')) {
             });
         }
     });
-    // 2. Ajouter indicateur de non-notifiabilité si fcmToken absent (à implémenter visuellement dans renderOrdersList)
 }
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/firebase-messaging-sw.js')
-            .then(registration => console.log('Service Worker OK :', registration))
-            .catch(error => console.error('Erreur SW :', error));
+            .then(reg => console.log('Service Worker enregistré :', reg))
+            .catch(err => console.error('Erreur enregistrement SW :', err));
     });
 }
