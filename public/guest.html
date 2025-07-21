@@ -6,40 +6,51 @@
     <title>Buvette - Ma Commande</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="/manifest.json">
-    <!-- Font Awesome pour les icônes -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Ajout de Font Awesome pour les icônes (si non déjà inclus ailleurs) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </head>
 <body>
     <div class="container guest-container">
-        <h1>Vos Commandes</h1>
+        <h1>Votre Commande</h1>
 
-        <div id="pin-input-section" class="card">
-            <h2>Saisissez votre n° de commande</h2>
-            <input type="text" id="guest-pin-input" placeholder="Entrez votre numéro de commande" maxlength="4" autocomplete="off">
-            <button id="add-pin-btn">Ajouter cette commande</button>
-            <p id="pin-error-message" class="error-message"></p>
+        <!-- Section pour créer une nouvelle commande -->
+        <div id="create-order-section" class="card">
+            <h2>Nouvelle Commande</h2>
+            <div class="form-group">
+                <label>Type de cuisson :</label>
+                <div class="radio-group">
+                    <input type="radio" id="cooking-bc" name="cookingType" value="BC" checked>
+                    <label for="cooking-bc">Bien Cuit</label>
+                    <input type="radio" id="cooking-ap" name="cookingType" value="AP">
+                    <label for="cooking-ap">À Point</label>
+                    <input type="radio" id="cooking-s" name="cookingType" value="S">
+                    <label for="cooking-s">Saignant</label>
+                    <input type="radio" id="cooking-b" name="cookingType" value="B">
+                    <label for="cooking-b">Bleu</label>
+                </div>
+            </div>
+            <button id="add-order-btn" class="btn primary-btn">Ajouter ma commande</button>
         </div>
 
-        <div id="guest-orders-display" class="card" style="display: none;">
-            <h2>Liste de vos Commandes</h2>
-            <div id="guest-orders-list">
+        <!-- Section pour la liste des commandes du client -->
+        <div id="orders-list-section" class="card" style="display: none;">
+            <h2>Mes Commandes</h2>
+            <div id="guest-orders-list" class="orders-list">
                 <!-- Les commandes seront insérées ici par JavaScript -->
-                <p>Aucune commande ajoutée pour le moment.</p>
             </div>
-            <div class="actions-buttons">
-                <button id="clear-all-pins-btn" class="cancel-btn">
-                    <i class="fas fa-trash-alt"></i> Purger toutes vos commandes
-                </button>
+            <div class="action-buttons-group">
+                <button id="validate-all-orders-btn" class="btn success-btn" style="display: none;">Valider toutes les commandes</button>
+                <button id="cancel-all-orders-btn" class="btn danger-btn" style="display: none;">Annuler toutes les commandes</button>
             </div>
         </div>
 
-        <!-- Modale de confirmation (cachée par défaut) -->
+        <!-- Modale de confirmation (pour Guest et Manager) -->
         <div id="confirmation-modal" class="modal">
             <div class="modal-content">
                 <p id="modal-message"></p>
-                <div class="modal-buttons">
-                    <button id="modal-confirm-btn" class="validate-btn">Confirmer</button>
-                    <button id="modal-cancel-btn" class="cancel-btn">Annuler</button>
+                <div class="modal-actions">
+                    <button id="modal-confirm-btn" class="btn primary-btn">Confirmer</button>
+                    <button id="modal-cancel-btn" class="btn secondary-btn">Annuler</button>
                 </div>
             </div>
         </div>
