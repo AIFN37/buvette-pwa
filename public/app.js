@@ -511,7 +511,6 @@ if (window.location.pathname.endsWith('guest.html')) {
 
 // --- Logique du module MANAGER ---
 if (window.location.pathname.endsWith('manager.html')) {
-    // Nouveaux éléments DOM pour le Manager (à ajouter dans manager.html)
     const createOrderSection = document.getElementById('create-order-section');
     const newPinDisplay = document.getElementById('new-pin-display');
     const generatePinBtn = document.getElementById('generate-pin-btn');
@@ -577,6 +576,13 @@ if (window.location.pathname.endsWith('manager.html')) {
         console.log("Manager Modal affichée. Attente d'interaction...");
     }
 
+    // Mappage des abréviations de cuisson aux noms complets et classes CSS pour les pastilles
+    const cookingTypesColors = {
+        'B': { name: 'Bleu', color: '#17a2b8' }, // Cyan/Teal
+        'S': { name: 'Saignant', color: '#dc3545' }, // Red
+        'AP': { name: 'À Point', color: '#ffb6c1' }, // Pink
+        'BC': { name: 'Bien Cuit', color: '#8b4513' } // SaddleBrown
+    };
 
     const cookingAbbrMap = {
         'BC': 'Bien Cuit',
@@ -584,7 +590,7 @@ if (window.location.pathname.endsWith('manager.html')) {
         'S': 'Saignant',
         'B': 'Bleu'
     };
-    const cookingColorClasses = { // Pour le style CSS
+    const cookingColorClasses = { // Pour le style CSS existant, à conserver pour la compatibilité
         'BC': 'bc',
         'AP': 'ap',
         'S': 's',
@@ -593,7 +599,10 @@ if (window.location.pathname.endsWith('manager.html')) {
 
     let managerPin = MANAGER_DEFAULT_PIN; // Référence Manager par défaut, sera mis à jour depuis Firestore
     let allOrders = []; // Nouvelle variable pour stocker toutes les commandes récupérées
-    let currentGeneratedPin = null; // Pour stocker la référence générée pour la nouvelle commande
+
+    // Map to store current UI state of cooking type and status for each order being edited
+    // This allows tracking changes before validation
+    const orderEditState = new Map(); // Key: order.id, Value: { cookingType: 'AP', status: 'pending' }
 
     /**
      * Charge la Référence Manager depuis Firestore ou la crée s'il n'existe pas.
@@ -692,40 +701,119 @@ if (window.location.pathname.endsWith('manager.html')) {
     }
 
     /**
-     * Fonction pour modifier la cuisson d'une commande.
-     * @param {string} orderId - L'ID de la commande à modifier.
+     * Met à jour l'état visuel et fonctionnel du bouton "Valider" et "Annuler" pour une commande.
+     * Le bouton est actif si des modifications sont détectées par rapport à l'état initial.
+     * @param {string} orderId - L'ID de la commande.
      */
-    async function modifyOrder(orderId) {
-        const orderRef = doc(db, "orders", orderId);
-        const docSnap = await getDoc(orderRef);
-        if (!docSnap.exists()) {
-            showManagerConfirmationModal("Commande non trouvée.", () => {});
-            return;
-        }
-        const currentOrder = docSnap.data();
+    function checkAndToggleValidateButton(orderId) {
+        const orderItemElement = document.querySelector(`.order-item[data-id="${orderId}"]`);
+        if (!orderItemElement) return;
 
-        showManagerConfirmationModal(`Modifier le type de cuisson pour la commande ${currentOrder.pin} (actuel: ${currentOrder.cookingType}). Entrez BC, AP, S ou B:`, () => {
-            const newCookingTypeInput = prompt(`Entrez le nouveau type de cuisson (BC, AP, S ou B) pour ${currentOrder.pin}:`);
-            let newCookingType = currentOrder.cookingType;
-            if (newCookingTypeInput && ['BC', 'AP', 'S', 'B'].includes(newCookingTypeInput.toUpperCase())) {
-                newCookingType = newCookingTypeInput.toUpperCase();
-                updateDoc(orderRef, { cookingType: newCookingType })
-                    .then(() => {
-                        console.log(`Cuisson de la commande ${currentOrder.pin} modifiée avec succès.`);
-                        showManagerConfirmationModal(`Cuisson de la commande ${currentOrder.pin} mise à jour.`, () => {});
-                    })
-                    .catch(error => {
-                        console.error("Erreur lors de la modification de la cuisson :", error);
-                        showManagerConfirmationModal("Erreur lors de la modification de la cuisson. Veuillez réessayer.", () => {});
-                    });
-            } else if (newCookingTypeInput !== null) { // Si l'utilisateur n'a pas annulé le prompt
-                showManagerConfirmationModal("Type de cuisson invalide. La cuisson ne sera pas modifiée.", () => {});
-            }
-        });
+        const validateBtn = orderItemElement.querySelector('.validate-order-btn');
+        const cancelBtn = orderItemElement.querySelector('.cancel-changes-btn'); // Nouveau bouton Annuler
+
+        const originalCookingType = orderItemElement.dataset.originalCookingType;
+        const originalStatus = orderItemElement.dataset.originalStatus;
+
+        // Get current selected cooking type from pastilles
+        const selectedPastille = orderItemElement.querySelector('.cooking-pastille.selected');
+        const currentCookingType = selectedPastille ? selectedPastille.dataset.cookingType : originalCookingType; // Fallback to original if none selected (shouldn't happen)
+
+        // Get current selected status from radio buttons
+        const selectedStatusRadio = orderItemElement.querySelector(`input[name="status-${orderId}"]:checked`);
+        const currentStatus = selectedStatusRadio ? selectedStatusRadio.value : originalStatus; // Fallback to original
+
+        const hasChanges = (currentCookingType !== originalCookingType) || (currentStatus !== originalStatus);
+
+        validateBtn.disabled = !hasChanges;
+        cancelBtn.disabled = !hasChanges; // Annuler est actif si des modifs sont là
     }
 
     /**
-     * Fonction pour valider une commande : applique le statut sélectionné par les boutons radio.
+     * Gère la sélection d'une pastille de cuisson.
+     * @param {string} orderId - L'ID de la commande.
+     * @param {string} selectedCookingType - Le type de cuisson sélectionné (BC, AP, S, B).
+     * @param {HTMLElement} clickedPastille - L'élément DOM de la pastille cliquée.
+     */
+    function handleCookingTypeSelection(orderId, selectedCookingType, clickedPastille) {
+        const orderItemElement = document.querySelector(`.order-item[data-id="${orderId}"]`);
+        if (!orderItemElement) return;
+
+        // Remove 'selected' class and check icon from all pastilles for this order
+        orderItemElement.querySelectorAll('.cooking-pastille').forEach(pastille => {
+            pastille.classList.remove('selected');
+            const checkIcon = pastille.querySelector('.fa-check');
+            if (checkIcon) checkIcon.remove();
+        });
+
+        // Add 'selected' class and check icon to the clicked pastille
+        clickedPastille.classList.add('selected');
+        const checkIcon = document.createElement('i');
+        checkIcon.classList.add('fas', 'fa-check');
+        clickedPastille.appendChild(checkIcon);
+
+        // Update the temporary state for this order
+        orderEditState.set(orderId, {
+            ...orderEditState.get(orderId), // Keep existing status if set
+            cookingType: selectedCookingType
+        });
+
+        checkAndToggleValidateButton(orderId);
+    }
+
+    /**
+     * Gère le changement de statut via les boutons radio.
+     * @param {string} orderId - L'ID de la commande.
+     * @param {string} selectedStatus - Le statut sélectionné.
+     */
+    function handleStatusChange(orderId, selectedStatus) {
+        orderEditState.set(orderId, {
+            ...orderEditState.get(orderId), // Keep existing cookingType if set
+            status: selectedStatus
+        });
+        checkAndToggleValidateButton(orderId);
+    }
+
+    /**
+     * Fonction pour annuler les modifications sur une commande.
+     * Revertit l'UI à l'état initial et désactive les boutons de validation/annulation.
+     * @param {string} orderId - L'ID de la commande.
+     */
+    async function cancelChanges(orderId) {
+        const orderItemElement = document.querySelector(`.order-item[data-id="${orderId}"]`);
+        if (!orderItemElement) return;
+
+        const originalCookingType = orderItemElement.dataset.originalCookingType;
+        const originalStatus = orderItemElement.dataset.originalStatus;
+
+        // Revert cooking type selection
+        orderItemElement.querySelectorAll('.cooking-pastille').forEach(pastille => {
+            pastille.classList.remove('selected');
+            const checkIcon = pastille.querySelector('.fa-check');
+            if (checkIcon) checkIcon.remove();
+            if (pastille.dataset.cookingType === originalCookingType) {
+                pastille.classList.add('selected');
+                const newCheckIcon = document.createElement('i');
+                newCheckIcon.classList.add('fas', 'fa-check');
+                pastille.appendChild(newCheckIcon);
+            }
+        });
+
+        // Revert status radio button selection
+        const originalRadio = orderItemElement.querySelector(`input[name="status-${orderId}"][value="${originalStatus}"]`);
+        if (originalRadio) {
+            originalRadio.checked = true;
+        }
+
+        // Clear the edit state for this order
+        orderEditState.delete(orderId);
+
+        // Disable validate and cancel buttons
+        checkAndToggleValidateButton(orderId);
+    }
+
+    /**
+     * Fonction pour valider les modifications de cuisson et/ou de statut.
      * @param {string} orderId - L'ID de la commande à valider.
      */
     async function validateOrder(orderId) {
@@ -733,19 +821,27 @@ if (window.location.pathname.endsWith('manager.html')) {
         const orderItemElement = document.querySelector(`.order-item[data-id="${orderId}"]`);
         if (!orderItemElement) {
             console.error(`Order item element not found for ID: ${orderId}`);
-            // Using alert for critical error that prevents UI interaction
             alert("Erreur: Élément de commande non trouvé. Impossible de valider.");
             return;
         }
 
-        const selectedRadio = orderItemElement.querySelector(`input[name="status-${orderId}"]:checked`);
-        if (!selectedRadio) {
-            alert("Veuillez sélectionner un statut pour la commande avant de valider.");
+        // Get selected cooking type from pastilles
+        const selectedPastille = orderItemElement.querySelector('.cooking-pastille.selected');
+        const newCookingType = selectedPastille ? selectedPastille.dataset.cookingType : null;
+
+        // Get selected status from radio buttons
+        const selectedStatusRadio = orderItemElement.querySelector(`input[name="status-${orderId}"]:checked`);
+        const newStatus = selectedStatusRadio ? selectedStatusRadio.value : null;
+
+        if (!newCookingType || !newStatus) {
+            alert("Veuillez sélectionner un type de cuisson et un statut pour la commande avant de valider.");
             return;
         }
 
-        const newStatus = selectedRadio.value;
-        const updateData = { status: newStatus };
+        const updateData = {
+            cookingType: newCookingType,
+            status: newStatus
+        };
 
         // Handle specific status transitions for timestamps/relanceCount
         if (newStatus === 'ready') {
@@ -761,8 +857,12 @@ if (window.location.pathname.endsWith('manager.html')) {
 
         try {
             await updateDoc(orderRef, updateData);
-            console.log(`Commande ${orderId} mise à jour au statut : ${newStatus}.`);
-            // Pas de modale de confirmation ici, comme demandé "sans dialogue modale inutile"
+            console.log(`Commande ${orderId} mise à jour (Cuisson: ${newCookingType}, Statut: ${newStatus}).`);
+            // Update original data attributes on the DOM element
+            orderItemElement.dataset.originalCookingType = newCookingType;
+            orderItemElement.dataset.originalStatus = newStatus;
+            orderEditState.delete(orderId); // Clear edit state after successful save
+            checkAndToggleValidateButton(orderId); // This will disable the buttons
         } catch (error) {
             console.error("Erreur lors de la validation de la commande :", error);
             showManagerConfirmationModal("Erreur lors de la validation de la commande. Veuillez réessayer.", () => {});
@@ -856,6 +956,8 @@ if (window.location.pathname.endsWith('manager.html')) {
             const orderItem = document.createElement('div');
             orderItem.classList.add('order-item');
             orderItem.dataset.id = order.id; // Pour référence facile au document Firestore
+            orderItem.dataset.originalCookingType = order.cookingType; // Store original for comparison
+            orderItem.dataset.originalStatus = order.status; // Store original for comparison
 
             // Appliquer la classe de statut pour la couleur de fond
             let statusClass = '';
@@ -874,9 +976,21 @@ if (window.location.pathname.endsWith('manager.html')) {
             }
             orderItem.classList.add(statusClass);
 
-            // Récupérer le nom complet de la cuisson et sa classe de couleur
-            const cookingName = cookingAbbrMap[order.cookingType] || 'N/A';
-            const cookingColorClass = cookingColorClasses[order.cookingType] || '';
+            // Générer les pastilles de cuisson
+            let cookingPastillesHtml = '';
+            for (const key in cookingTypesColors) {
+                const cookingInfo = cookingTypesColors[key];
+                const isSelected = order.cookingType === key;
+                cookingPastillesHtml += `
+                    <span class="cooking-pastille ${isSelected ? 'selected' : ''}"
+                          style="background-color: ${cookingInfo.color};"
+                          data-cooking-type="${key}"
+                          data-order-id="${order.id}"
+                          title="${cookingInfo.name}">
+                        ${isSelected ? '<i class="fas fa-check"></i>' : ''}
+                    </span>
+                `;
+            }
 
             let displayStatusText = order.status.replace('_', ' ');
             if (order.status === 'client_draft') {
@@ -885,10 +999,12 @@ if (window.location.pathname.endsWith('manager.html')) {
                 displayStatusText = 'Tour Perdu';
             }
 
-            // Contenu de la ligne : Référence + Type de Cuisson (Abréviation colorée) + Radio boutons de statut + Boutons d'action
+            // Contenu de la ligne : Référence + Pastilles de cuisson + Radio boutons de statut + Boutons d'action
             orderItem.innerHTML = `
                 <span class="pin">${order.pin}</span>
-                <span class="cooking-abbr ${cookingColorClass}">${order.cookingType}</span>
+                <div class="cooking-pastilles-container">
+                    ${cookingPastillesHtml}
+                </div>
                 <div class="status-controls">
                     ${order.status === 'client_draft' ? `<span class="status-message ${statusClass}">${displayStatusText}</span>` : `
                         <label><input type="radio" name="status-${order.id}" value="pending" ${order.status === 'pending' ? 'checked' : ''}> En préparation</label>
@@ -898,43 +1014,62 @@ if (window.location.pathname.endsWith('manager.html')) {
                     `}
                 </div>
                 <div class="order-actions">
-                    <button class="action-btn modify-order-btn" data-id="${order.id}" title="Modifier cuisson">
-                        <i class="fas fa-pencil-alt"></i>
+                    <button class="action-btn cancel-changes-btn" data-id="${order.id}" title="Annuler les modifications" disabled>
+                        <i class="fas fa-times"></i>
                     </button>
-                    <button class="action-btn validate-order-btn" data-id="${order.id}" title="Appliquer statut sélectionné">
+                    <button class="action-btn validate-order-btn" data-id="${order.id}" title="Appliquer statut et cuisson" disabled>
                         <i class="fas fa-check"></i>
                     </button>
                     <button class="action-btn delete-order-btn" data-id="${order.id}" title="Supprimer commande">
-                        <i class="fas fa-times"></i>
+                        <i class="fas fa-trash-alt"></i>
                     </button>
                 </div>
             `;
 
             ordersList.appendChild(orderItem);
 
-            // Attacher les écouteurs d'événements aux nouveaux boutons
-            const modifyBtn = orderItem.querySelector('.modify-order-btn');
+            // Attacher les écouteurs d'événements aux pastilles
+            orderItem.querySelectorAll('.cooking-pastille').forEach(pastille => {
+                pastille.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    handleCookingTypeSelection(order.id, pastille.dataset.cookingType, pastille);
+                });
+            });
+
+            // Attacher les écouteurs d'événements aux radio boutons de statut
+            orderItem.querySelectorAll(`input[name="status-${order.id}"]`).forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    handleStatusChange(order.id, radio.value);
+                });
+            });
+
+            // Attacher les écouteurs d'événements aux boutons d'action
+            const cancelBtn = orderItem.querySelector('.cancel-changes-btn'); // Nouveau bouton Annuler
             const validateBtn = orderItem.querySelector('.validate-order-btn');
             const deleteBtn = orderItem.querySelector('.delete-order-btn');
 
-            if (modifyBtn) {
-                modifyBtn.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Empêche l'événement de clic sur l'élément parent
-                    modifyOrder(order.id);
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    cancelChanges(order.id);
                 });
             }
             if (validateBtn) {
                 validateBtn.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Empêche l'événement de clic sur l'élément parent
+                    e.stopPropagation();
                     validateOrder(order.id);
                 });
             }
             if (deleteBtn) {
                 deleteBtn.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Empêche l'événement de clic sur l'élément parent
+                    e.stopPropagation();
                     deleteOrder(order.id);
                 });
             }
+
+            // Initialisez l'état des boutons Valider/Annuler après le rendu
+            checkAndToggleValidateButton(order.id);
         });
     }
 
