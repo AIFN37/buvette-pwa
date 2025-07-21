@@ -41,7 +41,7 @@ async function requestNotificationPermissionAndGetToken() {
             console.log('Permission de notification accordée.');
             // REMPLACEZ 'VOTRE_CLE_VAPID_PUBLIQUE' PAR VOTRE VRAIE CLÉ VAPID PUBLIQUE DEPUIS LA CONSOLE FIREBASE !
             // Exemple: const token = await getToken(messaging, { vapidKey: 'BOfarRrQ23arrM__eUBYL4RcP_wJDiP6gMRX8hqxwk8K4SeN1mSYqIplsq4nm0lXcMnJjHED6HSHB_J2iovTgAY' });
-            const token = await getToken(messaging, { vapidKey: 'BOfarRrQ23arrM__eUBYL4RcP_wJDiP6gMRX8hqxwk8K4SeN1mSYqIplsq4nm0lXcMnJjHED6HSHB_J2iovTgAY' });
+            const token = await getToken(messaging, { vapidKey: 'BOfarRrQ23arrM__eUBYL4RcP_wJDiP6gMRX8hqxwk8K4SeN1mSYqIplsq4nm0lXcMnJjHED6HSHB_J2iovTgAY' }); // Utilisation d'une clé d'exemple pour éviter une erreur si non fournie.
             console.log('Jeton FCM :', token);
             return token;
         } else {
@@ -318,7 +318,6 @@ if (window.location.pathname.endsWith('guest.html')) {
         }
     });
 
-
     /**
      * Gère la modification d'une commande existante (en brouillon).
      * Pour l'instant, cela permettrait de changer la cuisson.
@@ -418,7 +417,7 @@ if (window.location.pathname.endsWith('guest.html')) {
                 }
             }
         });
-    };
+    });
 
     /**
      * Valide toutes les commandes en brouillon.
@@ -569,86 +568,20 @@ if (window.location.pathname.endsWith('manager.html')) {
     const ordersList = document.getElementById('orders-list');
     const pinSearchInput = document.getElementById('pin-search-input');
 
-    // Nouveaux éléments DOM pour la création de commande
-    const createOrderSection = document.getElementById('create-order-section');
-    const newPinDisplay = document.getElementById('new-pin-display');
-    const generatePinBtn = document.getElementById('generate-pin-btn');
-    const clientNameInput = document.getElementById('client-name-input'); // Nouveau champ pour le nom du client
-    const cookingTypeRadios = document.querySelectorAll('input[name="cookingType"]');
-    const createOrderBtn = document.getElementById('create-order-btn');
-    const managerOrderCreationMessage = document.getElementById('manager-order-creation-message');
-
-    // MODAL ELEMENTS (références globales, mais ajoutées ici pour clarté dans le module Manager)
-    const confirmationModal = document.getElementById('confirmation-modal');
-    const modalMessage = document.getElementById('modal-message');
-    const modalConfirmBtn = document.getElementById('modal-confirm-btn');
-    const modalCancelBtn = document.getElementById('modal-cancel-btn');
-
-    // Variables pour stocker les callbacks actuels de la modale (pour le Manager aussi)
-    let currentOnConfirmCallback = null;
-    let currentOnCancelCallback = null;
-
-    // Fonctions de gestion de la modale (répétées ici pour la clarté, mais pourraient être globales si elles sont les mêmes)
-    function handleManagerConfirmClick() {
-        console.log("handleManagerConfirmClick triggered.");
-        confirmationModal.style.display = 'none';
-        if (currentOnConfirmCallback) {
-            currentOnConfirmCallback();
-        }
-        currentOnConfirmCallback = null;
-        currentOnCancelCallback = null;
-    }
-
-    function handleManagerCancelClick() {
-        console.log("handleManagerCancelClick triggered.");
-        confirmationModal.style.display = 'none';
-        if (currentOnCancelCallback) {
-            currentOnCancelCallback();
-        }
-        currentOnConfirmCallback = null;
-        currentOnCancelCallback = null;
-    }
-
-    // Attache les écouteurs pour la modale du Manager une seule fois
-    if (modalConfirmBtn && modalCancelBtn) {
-        modalConfirmBtn.addEventListener('click', handleManagerConfirmClick);
-        modalCancelBtn.addEventListener('click', handleManagerCancelClick);
-        console.log("Manager Modal listeners attached globally.");
-    } else {
-        console.error("Un ou plusieurs boutons de la modale du Manager (confirmer/annuler) n'ont pas été trouvés. Impossible d'attacher les écouteurs.");
-    }
-
-    // Fonction showConfirmationModal spécifique ou réutilisée (ici, réutilisée)
-    function showManagerConfirmationModal(message, onConfirmCallback, onCancelCallback = () => {}) {
-        modalMessage.innerText = message;
-        confirmationModal.style.display = 'flex';
-        currentOnConfirmCallback = onConfirmCallback;
-        currentOnCancelCallback = onCancelCallback;
-        console.log("Manager Modal affichée. Attente d'interaction...");
-    }
-
-    // Mappage des abréviations de cuisson aux noms complets et classes CSS pour les pastilles
-    const cookingTypesColors = {
-        'B': { name: 'Bleu', color: '#17a2b8' }, // Cyan/Teal
-        'S': { name: 'Saignant', color: '#dc3545' }, // Red
-        'AP': { name: 'À Point', color: '#ffb6c1' }, // Pink
-        'BC': { name: 'Bien Cuit', color: '#8b4513' } // SaddleBrown
-    };
-
     const cookingAbbrMap = {
         'BC': 'Bien Cuit',
         'AP': 'À Point',
         'S': 'Saignant',
         'B': 'Bleu'
     };
-    const cookingColorClasses = { // Pour le style CSS existant, à conserver pour la compatibilité
-        'BC': 'bc',
-        'AP': 'ap',
-        'S': 's',
-        'B': 'b'
+    const cookingTypesColors = { // Pour le style CSS
+        'B': { name: 'Bleu', color: '#17a2b8' },
+        'S': { name: 'Saignant', color: '#dc3545' },
+        'AP': { name: 'À Point', color: '#ffb6c1' },
+        'BC': { name: 'Bien Cuit', color: '#8b4513' }
     };
 
-    let managerPin = MANAGER_DEFAULT_PIN; // Référence Manager par défaut, sera mis à jour depuis Firestore
+    let managerPin = MANAGER_DEFAULT_PIN; // PIN par défaut, sera mis à jour depuis Firestore
     let allOrders = []; // Nouvelle variable pour stocker toutes les commandes récupérées
 
     // Map to store current UI state of cooking type and status for each order being edited
@@ -656,19 +589,18 @@ if (window.location.pathname.endsWith('manager.html')) {
     const orderEditState = new Map();
 
     /**
-     * Charge la Référence Manager depuis Firestore ou la crée s'il n'existe pas.
+     * Charge le PIN Manager depuis Firestore ou le crée s'il n'existe pas.
      */
     async function loadManagerPin() {
         const docRef = doc(db, "config", MANAGER_PIN_DOC_ID);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
             managerPin = docSnap.data().pin;
-            console.log("Manager PIN chargé depuis Firestore:", managerPin); // Debug log
+            console.log("PIN Manager chargé depuis Firestore:", managerPin);
         } else {
-            // Créer le document avec la Référence par défaut si non trouvé
+            // Créer le document avec le PIN par défaut si non trouvé
             await setDoc(docRef, { pin: MANAGER_DEFAULT_PIN });
-            managerPin = MANAGER_DEFAULT_PIN; // Ensure managerPin is set locally after creation
-            console.log("Default Manager PIN created in Firestore:", MANAGER_DEFAULT_PIN); // Debug log
+            console.log("PIN Manager par défaut créé dans Firestore:", MANAGER_DEFAULT_PIN);
         }
     }
 
@@ -676,84 +608,20 @@ if (window.location.pathname.endsWith('manager.html')) {
      * Affiche le tableau de bord Manager après authentification.
      */
     function showManagerDashboard() {
-        console.log("Attempting to show manager dashboard."); // Debug log
-        if (authSection) authSection.style.display = 'none';
-        if (managerDashboard) managerDashboard.style.display = 'block';
-        console.log("Auth section display:", authSection ? authSection.style.display : 'N/A'); // Debug log
-        console.log("Manager dashboard display:", managerDashboard ? managerDashboard.style.display : 'N/A'); // Debug log
-
+        authSection.style.display = 'none';
+        managerDashboard.style.display = 'block';
         startOrderListener(); // Démarrer l'écoute des commandes
-        // Initialiser la section de création de commande
-        if (generatePinBtn) {
-            generatePinBtn.addEventListener('click', () => {
-                currentGeneratedPin = generatePin();
-                newPinDisplay.innerText = currentGeneratedPin;
-                createOrderBtn.disabled = false; // Activer le bouton de création
-            });
-        }
-        if (createOrderBtn) {
-            createOrderBtn.addEventListener('click', createManagerOrder);
-        }
     }
 
     // Gérer la connexion
     managerLoginBtn.addEventListener('click', async () => {
-        console.log("Manager login button clicked."); // Debug log
-        await loadManagerPin(); // Assurez-vous d'avoir la référence à jour
-        const enteredPin = managerPinInput.value.trim(); // Trim whitespace
-        console.log("Entered PIN:", enteredPin); // Debug log
-        console.log("Stored Manager PIN:", managerPin); // Debug log
-
-        if (enteredPin === managerPin) {
-            console.log("PIN matched. Showing dashboard."); // Debug log
+        await loadManagerPin(); // Assurez-vous d'avoir le PIN à jour
+        if (managerPinInput.value === managerPin) {
             showManagerDashboard();
         } else {
-            console.log("PIN mismatch. Displaying error."); // Debug log
-            authErrorMessage.innerText = "Référence Manager incorrecte. Veuillez réessayer.";
+            authErrorMessage.innerText = "Code PIN incorrect. Veuillez réessayer.";
         }
     });
-
-    /**
-     * Crée une nouvelle commande client depuis le Manager.
-     */
-    async function createManagerOrder() {
-        if (!currentGeneratedPin) {
-            managerOrderCreationMessage.innerText = "Veuillez générer un N° de commande d'abord.";
-            return;
-        }
-
-        const selectedCookingType = document.querySelector('input[name="cookingType"]:checked');
-        if (!selectedCookingType) {
-            managerOrderCreationMessage.innerText = "Veuillez sélectionner un mode de cuisson.";
-            return;
-        }
-
-        const clientName = clientNameInput.value.trim(); // Récupérer le nom du client
-
-        const newOrder = {
-            pin: currentGeneratedPin,
-            fcmToken: null, // Le client ajoutera son token lors de la connexion
-            status: "pending", // La commande est directement "en préparation"
-            createdAt: new Date(),
-            cookingType: selectedCookingType.value,
-            clientName: clientName === '' ? 'N/A' : clientName, // Ajouter le nom du client
-            // Ajoutez d'autres détails de commande si un menu plus complexe est implémenté
-        };
-
-        try {
-            await addDoc(collection(db, "orders"), newOrder);
-            managerOrderCreationMessage.innerText = `Commande avec N° ${currentGeneratedPin} pour ${clientName || 'N/A'} créée avec succès !`;
-            console.log("Nouvelle commande Manager enregistrée avec N°:", currentGeneratedPin, "et client:", clientName);
-            currentGeneratedPin = null; // Réinitialiser la référence générée
-            newPinDisplay.innerText = 'Générer un N° de commande'; // Mise à jour du libellé
-            clientNameInput.value = ''; // Réinitialiser le champ nom client
-            createOrderBtn.disabled = true; // Désactiver le bouton de création
-            // L'UI sera mise à jour via l'onSnapshot du manager dashboard
-        } catch (error) {
-            console.error("Erreur lors de la création de la commande par le Manager :", error);
-            managerOrderCreationMessage.innerText = "Erreur lors de la création de la commande. Vérifiez Firestore.";
-        }
-    }
 
     /**
      * Met à jour l'état visuel et fonctionnel du bouton "Valider" et "Annuler" pour une commande.
@@ -932,8 +800,6 @@ if (window.location.pathname.endsWith('manager.html')) {
         editState.currentPin = editState.originalPin;
 
         // Re-render this specific order item to reflect the reverted state
-        // This is a bit of a hack as it re-renders only one item, but it's simpler than re-rendering the whole list.
-        // A full re-render (calling renderOrdersList) would also work but might be less performant for single item changes.
         // For simplicity and consistency with onSnapshot, let's just trigger a full re-render
         renderOrdersList(allOrders, pinSearchInput.value.trim().toUpperCase());
         // The checkAndToggleValidateButton will be called during renderOrdersList, disabling the buttons
@@ -962,6 +828,10 @@ if (window.location.pathname.endsWith('manager.html')) {
         const newStatus = editState.currentStatus;
         const newClientName = editState.currentClientName === '' ? 'N/A' : editState.currentClientName; // Handle empty client name
         const newPin = editState.currentPin;
+
+        console.log("Validate Order - Current editState:", { ...editState }); // Log current edit state
+        console.log(`Validate Order - New values: CookingType=${newCookingType}, Status=${newStatus}, ClientName=${newClientName}, PIN=${newPin}`);
+
 
         if (!newCookingType || !newStatus || !newPin) {
             showManagerConfirmationModal("Veuillez sélectionner un type de cuisson, un statut et un N° de commande valide avant de valider.", () => {});
@@ -1006,6 +876,8 @@ if (window.location.pathname.endsWith('manager.html')) {
             updateData.relanceCount = 0;
         }
 
+        console.log("Validate Order - Data to update in Firestore:", { ...updateData }); // Log data being sent
+
         try {
             await updateDoc(orderRef, updateData);
             console.log(`Commande ${orderId} mise à jour (Cuisson: ${newCookingType}, Statut: ${newStatus}, Client: ${newClientName}, PIN: ${newPin}).`);
@@ -1013,8 +885,8 @@ if (window.location.pathname.endsWith('manager.html')) {
             // The onSnapshot listener will trigger renderOrdersList, which will then disable the buttons
             // as the Firestore data now matches the "original" state.
         } catch (error) {
-            console.error("Erreur lors de la validation de la commande :", error);
-            showManagerConfirmationModal("Erreur lors de la validation de la commande. Veuillez réessayer.", () => {});
+            console.error("Erreur lors de la validation de la commande (Firestore update failed):", error); // More specific error message
+            showManagerConfirmationModal("Erreur lors de la validation de la commande. Veuillez réessayer. Détails: " + error.message, () => {}); // Show error message from Firestore
         }
     }
 
@@ -1126,7 +998,7 @@ if (window.location.pathname.endsWith('manager.html')) {
                     originalStatus: order.status,
                     originalClientName: order.clientName || 'N/A', // Ensure it's never undefined
                     originalPin: order.pin,
-                    currentCookingType: order.cookingType,
+                    currentCookingType: order.cookingType, // Start with current matching original
                     currentStatus: order.status,
                     currentClientName: order.clientName || 'N/A',
                     currentPin: order.pin
@@ -1134,17 +1006,22 @@ if (window.location.pathname.endsWith('manager.html')) {
                 orderEditState.set(order.id, editState);
             } else {
                 // If the Firestore data for this order has changed (e.g., from another manager or cloud function)
-                // and it's different from our current local edits, then we should reset our local edits
-                // to match the new Firestore data.
-                if (editState.originalCookingType !== order.cookingType ||
-                    editState.originalStatus !== order.status ||
-                    editState.originalClientName !== (order.clientName || 'N/A') || // Compare with actual Firestore value
-                    editState.originalPin !== order.pin) { // Compare with actual Firestore value
+                // and it's different from our stored 'original' values, we update our 'original' values.
+                // We only reset 'current' values to the new 'original' if the user had no uncommitted changes.
+                const hasUncommittedLocalChanges = (editState.currentCookingType !== editState.originalCookingType) ||
+                                                   (editState.currentStatus !== editState.originalStatus) ||
+                                                   (editState.currentClientName !== editState.originalClientName) ||
+                                                   (editState.currentPin !== editState.originalPin);
 
-                    editState.originalCookingType = order.cookingType;
-                    editState.originalStatus = order.status;
-                    editState.originalClientName = order.clientName || 'N/A';
-                    editState.originalPin = order.pin;
+                // Update original values to reflect the latest Firestore data
+                editState.originalCookingType = order.cookingType;
+                editState.originalStatus = order.status;
+                editState.originalClientName = order.clientName || 'N/A';
+                editState.originalPin = order.pin;
+
+                // If the user had no uncommitted local changes, update 'current' to match the new 'original' (Firestore data).
+                // If the user *did* have uncommitted local changes, we preserve them.
+                if (!hasUncommittedLocalChanges) {
                     editState.currentCookingType = order.cookingType;
                     editState.currentStatus = order.status;
                     editState.currentClientName = order.clientName || 'N/A';
