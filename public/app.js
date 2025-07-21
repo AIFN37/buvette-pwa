@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, orderBy, limit, getDoc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, orderBy, limit, getDoc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-messaging.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-messaging.js";
 import { firebaseConfig } from './firebase-config.js'; // Chemin corrigé : le fichier firebase-config.js est dans le même dossier 'public'
 
@@ -725,7 +725,7 @@ if (window.location.pathname.endsWith('manager.html')) {
             activeOrders.sort((a, b) => {
                 const aTime = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate().getTime() : a.createdAt) : 0;
                 const bTime = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate().getTime() : b.createdAt) : 0;
-                return aTime - bTime;
+                return aTime - bBime;
             });
 
             // Combiner les listes (actives d'abord, puis livrées/perdues)
@@ -797,44 +797,84 @@ if (window.location.pathname.endsWith('manager.html')) {
                 <span class="pin">${order.pin}</span>
                 <span class="cooking-abbr ${cookingColorClass}">${order.cookingType}</span>
                 <span class="status-text">${displayStatusText}</span>
+                <div class="order-actions">
+                    <button class="action-btn modify-order-btn" data-id="${order.id}" title="Modifier">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                    <button class="action-btn validate-order-btn" data-id="${order.id}" title="Valider">
+                        <i class="fas fa-check"></i>
+                    </button>
+                    <button class="action-btn delete-order-btn" data-id="${order.id}" title="Supprimer">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
             `;
 
-            // Logique de clic pour changer le statut
-            orderItem.addEventListener('click', async () => {
-                const orderRef = doc(db, "orders", order.id);
-                if (order.status === 'client_draft') {
-                    // Le manager peut valider une commande brouillon pour la passer en pending
-                    showManagerConfirmationModal(`Voulez-vous valider la commande brouillon avec référence ${order.pin} et la passer en préparation ?`, async () => {
-                         await updateDoc(orderRef, { status: "pending" });
-                         console.log(`Commande avec référence ${order.pin} validée par le manager et passée en préparation.`);
-                    });
-                } else if (order.status === 'pending') {
-                    // Passe à READY, la Cloud Function va envoyer la 1ère notification
-                    showManagerConfirmationModal(`Voulez-vous marquer la commande avec référence ${order.pin} comme PRÊTE ?`, async () => {
-                        await updateDoc(orderRef, {
-                            status: "ready",
-                            readyTimestamp: Date.now(), // Enregistre le timestamp de la mise en prêt
-                            relanceCount: 0 // Réinitialise le compteur de relance
-                        });
-                        console.log(`Commande avec référence ${order.pin} marquée comme PRÊTE.`);
-                    });
-                } else if (order.status === 'ready' || order.status === 'relance') {
-                    // Passe à DELIVERED
-                    showManagerConfirmationModal(`Voulez-vous marquer la commande avec référence ${order.pin} comme LIVRÉE ?`, async () => {
-                        await updateDoc(orderRef, { status: "delivered" });
-                        console.log(`Commande avec référence ${order.pin} marquée comme LIVRÉE.`);
-                    });
-                } else if (order.status === 'delivered' || order.status === 'lost_turn') {
-                    // Optionnel: Supprimer la commande une fois livrée/perdue
-                    showManagerConfirmationModal(`Voulez-vous archiver/supprimer la commande avec référence ${order.pin} (statut: ${displayStatusText}) ?`, async () => {
-                        await deleteDoc(orderRef);
-                        console.log(`Commande avec référence ${order.pin} archivée/supprimée.`);
-                    });
-                }
-            });
             ordersList.appendChild(orderItem);
+
+            // Attacher les écouteurs d'événements aux nouveaux boutons
+            const modifyBtn = orderItem.querySelector('.modify-order-btn');
+            const validateBtn = orderItem.querySelector('.validate-order-btn');
+            const deleteBtn = orderItem.querySelector('.delete-order-btn');
+
+            if (modifyBtn) {
+                modifyBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Empêche l'événement de clic sur l'élément parent
+                    modifyOrder(order.id);
+                });
+            }
+            if (validateBtn) {
+                validateBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Empêche l'événement de clic sur l'élément parent
+                    validateOrder(order.id);
+                });
+            }
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Empêche l'événement de clic sur l'élément parent
+                    deleteOrder(order.id);
+                });
+            }
         });
     }
+
+    /**
+     * Placeholder pour la fonction de modification de commande.
+     * @param {string} orderId - L'ID de la commande à modifier.
+     */
+    function modifyOrder(orderId) {
+        showManagerConfirmationModal(`Fonctionnalité de modification pour la commande ${orderId} à implémenter.`, () => {
+            console.log(`Modification confirmée pour la commande ${orderId}.`);
+        });
+    }
+
+    /**
+     * Placeholder pour la fonction de validation de commande.
+     * @param {string} orderId - L'ID de la commande à valider.
+     */
+    function validateOrder(orderId) {
+        showManagerConfirmationModal(`Fonctionnalité de validation pour la commande ${orderId} à implémenter.`, () => {
+            console.log(`Validation confirmée pour la commande ${orderId}.`);
+        });
+    }
+
+    /**
+     * Placeholder pour la fonction de suppression de commande.
+     * @param {string} orderId - L'ID de la commande à supprimer.
+     */
+    function deleteOrder(orderId) {
+        showManagerConfirmationModal(`Voulez-vous vraiment supprimer la commande ${orderId} ?`, async () => {
+            try {
+                await deleteDoc(doc(db, "orders", orderId));
+                console.log(`Commande ${orderId} supprimée.`);
+                // L'UI sera mise à jour via l'onSnapshot
+            } catch (error) {
+                console.error("Erreur lors de la suppression de la commande :", error);
+                showManagerConfirmationModal("Erreur lors de la suppression de la commande. Veuillez réessayer.", () => {});
+            }
+        });
+    }
+
 
     // Gérer la recherche
     pinSearchInput.addEventListener('input', () => {
