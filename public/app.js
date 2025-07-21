@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, orderBy, limit, getDoc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-messaging.js";
+import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, orderBy, limit, getDoc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-messaging.js";
-import { firebaseConfig } from './firebase-config.js'; // Chemin corrigé si firebase-config.js est dans le dossier public
+import { firebaseConfig } from './firebase-config.js'; // Chemin corrigé : le fichier firebase-config.js est dans le même dossier 'public'
 
 // --- Initialisation Firebase ---
 const app = initializeApp(firebaseConfig);
@@ -9,11 +9,11 @@ const db = getFirestore(app);
 const messaging = getMessaging(app);
 
 // --- Constantes de Configuration (AJUSTEZ CELLES-CI SI BESOIN) ---
-const MANAGER_PIN_DOC_ID = "managerPinConfig"; // Document ID pour le PIN Manager dans Firestore
-const MANAGER_DEFAULT_PIN = "1234"; // PIN par défaut si non trouvé dans Firestore (À CHANGER EN PRODUCTION !)
+const MANAGER_PIN_DOC_ID = "managerPinConfig"; // Document ID pour la référence Manager dans Firestore
+const MANAGER_DEFAULT_PIN = "1234"; // Référence Manager par défaut si non trouvée dans Firestore (À CHANGER EN PRODUCTION !)
 const RELANCE_INTERVAL_MS = 30 * 1000; // 30 secondes
 const MAX_RELANCES = 3; // 3 relances = 90 secondes avant perte de tour
-const LOCAL_STORAGE_PINS_KEY = 'buvettePwaGuestPins'; // Clé pour stocker un tableau de PINs dans le localStorage du Guest
+const LOCAL_STORAGE_PINS_KEY = 'buvettePwaGuestPins'; // Clé pour stocker un tableau de références dans le localStorage du Guest
 
 // --- Fonctions Utilitaires Générales ---
 
@@ -21,7 +21,7 @@ const LOCAL_STORAGE_PINS_KEY = 'buvettePwaGuestPins'; // Clé pour stocker un ta
  * Génère une référence alphanumérique de 4 caractères.
  * @returns {string} La référence générée.
  */
-function generatePin() { // Renommé generatePin pour rester cohérent avec l'usage interne
+function generatePin() {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
     for (let i = 0; i < 4; i++) {
@@ -603,11 +603,12 @@ if (window.location.pathname.endsWith('manager.html')) {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
             managerPin = docSnap.data().pin;
-            console.log("Référence Manager chargée depuis Firestore:", managerPin);
+            console.log("Manager PIN loaded from Firestore:", managerPin); // Debug log
         } else {
             // Créer le document avec la Référence par défaut si non trouvé
             await setDoc(docRef, { pin: MANAGER_DEFAULT_PIN });
-            console.log("Référence Manager par défaut créée dans Firestore:", MANAGER_DEFAULT_PIN);
+            managerPin = MANAGER_DEFAULT_PIN; // Ensure managerPin is set locally after creation
+            console.log("Default Manager PIN created in Firestore:", MANAGER_DEFAULT_PIN); // Debug log
         }
     }
 
@@ -615,8 +616,12 @@ if (window.location.pathname.endsWith('manager.html')) {
      * Affiche le tableau de bord Manager après authentification.
      */
     function showManagerDashboard() {
-        authSection.style.display = 'none';
-        managerDashboard.style.display = 'block';
+        console.log("Attempting to show manager dashboard."); // Debug log
+        if (authSection) authSection.style.display = 'none';
+        if (managerDashboard) managerDashboard.style.display = 'block';
+        console.log("Auth section display:", authSection ? authSection.style.display : 'N/A'); // Debug log
+        console.log("Manager dashboard display:", managerDashboard ? managerDashboard.style.display : 'N/A'); // Debug log
+
         startOrderListener(); // Démarrer l'écoute des commandes
         // Initialiser la section de création de commande
         if (generatePinBtn) {
@@ -633,10 +638,17 @@ if (window.location.pathname.endsWith('manager.html')) {
 
     // Gérer la connexion
     managerLoginBtn.addEventListener('click', async () => {
+        console.log("Manager login button clicked."); // Debug log
         await loadManagerPin(); // Assurez-vous d'avoir la référence à jour
-        if (managerPinInput.value === managerPin) {
+        const enteredPin = managerPinInput.value.trim(); // Trim whitespace
+        console.log("Entered PIN:", enteredPin); // Debug log
+        console.log("Stored Manager PIN:", managerPin); // Debug log
+
+        if (enteredPin === managerPin) {
+            console.log("PIN matched. Showing dashboard."); // Debug log
             showManagerDashboard();
         } else {
+            console.log("PIN mismatch. Displaying error."); // Debug log
             authErrorMessage.innerText = "Référence Manager incorrecte. Veuillez réessayer.";
         }
     });
