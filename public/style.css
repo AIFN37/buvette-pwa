@@ -355,6 +355,53 @@ button:disabled {
     text-align: right;
 }
 
+/* Styles for Manager order actions buttons */
+.order-item .order-actions {
+    display: flex;
+    gap: 8px; /* Space between buttons */
+    align-items: center;
+    flex-shrink: 0; /* Prevent the action buttons div from shrinking */
+}
+
+.order-item .order-actions button {
+    /* Override general button styles for these specific action buttons */
+    width: 36px; /* Fixed width for square buttons */
+    height: 36px; /* Fixed height */
+    padding: 0; /* Remove padding as it's icon-only */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%; /* Make them circular */
+    font-size: 1.1em; /* Adjust icon size */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow */
+}
+
+/* Specific button colors */
+.order-item .order-actions .modify-order-btn {
+    background-color: #ffc107; /* Amber/Orange for modify - classic "warning" color */
+    color: #fff;
+}
+.order-item .order-actions .modify-order-btn:hover {
+    background-color: #e0a800;
+}
+
+.order-item .order-actions .validate-order-btn {
+    background-color: #28a745; /* Green for validate - classic "success" color */
+    color: #fff;
+}
+.order-item .order-actions .validate-order-btn:hover {
+    background-color: #218838;
+}
+
+.order-item .order-actions .delete-order-btn {
+    background-color: #dc3545; /* Red for delete - classic "danger" color */
+    color: #fff;
+}
+.order-item .order-actions .delete-order-btn:hover {
+    background-color: #c82333;
+}
+
+
 /* --- Cooking Type Colors --- */
 .cooking-type.bc, .cooking-abbr.bc { background-color: #e8f5e9; color: #28a745; border: 1px solid #28a745; } /* Bien Cuit - Green */
 .cooking-type.ap, .cooking-abbr.ap { background-color: #fff3cd; color: #ffc107; border: 1px solid #ffc107; } /* À Point - Yellow */
@@ -471,5 +518,15 @@ button:disabled {
 
     .modal-buttons button {
         width: 100%;
+    }
+
+    .order-item .order-actions {
+        flex-direction: column; /* Stack buttons on small screens */
+        gap: 5px;
+    }
+
+    .order-item .order-actions button {
+        width: 100%; /* Full width when stacked */
+        border-radius: 8px; /* Square corners when stacked */
     }
 }
