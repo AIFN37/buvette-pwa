@@ -318,6 +318,7 @@ if (window.location.pathname.endsWith('guest.html')) {
         }
     });
 
+
     /**
      * Gère la modification d'une commande existante (en brouillon).
      * Pour l'instant, cela permettrait de changer la cuisson.
@@ -1022,7 +1023,7 @@ if (window.location.pathname.endsWith('manager.html')) {
      * @param {string} orderId - L'ID de la commande à supprimer.
      */
     function deleteOrder(orderId) {
-        showManagerConfirmationModal(`Voulez-vous vraiment supprimer la commande ${order.id} ? Cette action est irréversible.`, async () => {
+        showManagerConfirmationModal(`Voulez-vous vraiment supprimer la commande ${orderId} ? Cette action est irréversible.`, async () => {
             try {
                 await deleteDoc(doc(db, "orders", orderId));
                 console.log(`Commande ${orderId} supprimée.`);
