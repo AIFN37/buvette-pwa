@@ -140,12 +140,14 @@ if (window.location.pathname.endsWith('guest.html')) {
             confirmationModal.style.display = 'none';
             onConfirmCallback();
         });
+        console.log("Confirm button listener attached."); // Debug log
 
         modalCancelBtn.addEventListener('click', () => {
             console.log("Bouton Annuler cliqué."); // Debug log
             confirmationModal.style.display = 'none';
             onCancelCallback(); // Exécute le callback d'annulation si fourni
         });
+        console.log("Cancel button listener attached."); // Debug log
     }
 
 
@@ -264,7 +266,8 @@ if (window.location.pathname.endsWith('guest.html')) {
             renderGuestOrders(); // Met à jour l'affichage
         } catch (error) {
             console.error("Erreur lors de la création de la commande brouillon :", error);
-            showConfirmationModal("Impossible d'ajouter la commande. Vérifiez votre connexion ou les règles Firestore.", () => {});
+            // Modified: Add onCancelCallback to navigate to index.html
+            showConfirmationModal("Impossible d'ajouter la commande. Vérifiez votre connexion ou les règles Firestore.", () => {}, () => { window.location.href = 'index.html'; });
         }
     });
 
@@ -461,8 +464,8 @@ if (window.location.pathname.endsWith('guest.html')) {
             }
         }, (error) => {
             console.error(`Erreur lors de l'écoute de la commande ${pin} (${orderId}) :`, error);
-            // Gérer l'erreur d'écoute, par exemple, informer l'utilisateur
-            showConfirmationModal("Erreur de connexion à une commande. Veuillez réessayer.", () => {});
+            // Modified: Add onCancelCallback to navigate to index.html
+            showConfirmationModal("Erreur de connexion à une commande. Veuillez réessayer.", () => {}, () => { window.location.href = 'index.html'; });
         });
     }
 
@@ -594,7 +597,7 @@ if (window.location.pathname.endsWith('manager.html')) {
             orderItem.classList.add('order-item');
             orderItem.dataset.id = order.id; // Pour référence facile au document Firestore
 
-            // Appliquer la classe de statut pour la couleur de fond
+            // Appliquer la classe de statut pour le fond
             let statusClass = '';
             // Le manager peut voir les commandes en brouillon des clients
             if (order.status === 'client_draft') {
