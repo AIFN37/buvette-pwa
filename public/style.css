@@ -156,39 +156,46 @@ button:disabled {
 #guest-orders-list {
     display: flex;
     flex-direction: column;
-    gap: 15px; /* Space between order items */
+    gap: 8px; /* Reduced space between order items for list feel */
 }
 
 .guest-order-item {
     background-color: #ffffff;
-    border: 1px solid #eee;
-    border-radius: 10px;
-    padding: 15px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    border: none; /* Remove full border */
+    border-bottom: 1px solid #eee; /* Add subtle bottom border for list separation */
+    border-radius: 0; /* Remove border-radius for list feel */
+    padding: 10px 15px; /* Reduced padding for list items */
+    box-shadow: none; /* Remove box-shadow to make it less like a block */
     display: grid;
-    grid-template-columns: 1.5fr 1fr 2fr 0.8fr; /* PIN, Cuisson, Statut+Timestamp, Compte à rebours */
+    grid-template-columns: 1.5fr 1fr 2fr 0.8fr; /* Référence, Cuisson, Statut+Timestamp, Compte à rebours */
     gap: 10px;
     align-items: center;
     justify-content: space-between;
 }
 
+/* Remove bottom border for the last item in the list */
+.guest-order-item:last-child {
+    border-bottom: none;
+}
+
+
 .order-grid {
     display: grid;
-    grid-template-columns: 1.5fr 1fr 2fr 0.8fr; /* PIN, Cuisson, Statut+Timestamp, Compte à rebours */
+    grid-template-columns: 1.5fr 1fr 2fr 0.8fr; /* Référence, Cuisson, Statut+Timestamp, Compte à rebours */
     gap: 10px;
     align-items: center;
     width: 100%;
 }
 
 .pin-cell {
-    grid-row: span 2; /* PIN takes 2 rows */
+    grid-row: span 2; /* Référence takes 2 rows */
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .pin-display-large {
-    font-size: 2.2em; /* Large PIN size */
+    font-size: 2.2em; /* Large Référence size */
     font-weight: bold;
     color: #333;
     text-align: center;
@@ -330,7 +337,7 @@ button:disabled {
 .order-item .pin {
     font-weight: bold;
     font-size: 1.2em;
-    min-width: 60px; /* Ensure PIN column has minimum width */
+    min-width: 60px; /* Ensure Référence column has minimum width */
 }
 
 .order-item .cooking-abbr {
@@ -434,7 +441,7 @@ button:disabled {
 
     .pin-cell {
         grid-row: auto; /* Reset row span */
-        grid-column: span 2; /* PIN takes full width on small screens */
+        grid-column: span 2; /* Référence takes full width on small screens */
         justify-content: center;
     }
 
