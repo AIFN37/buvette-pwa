@@ -11,58 +11,43 @@
 </head>
 <body>
     <div class="container manager-container">
-        <h1>Gestionnaire de Buvette</h1>
-
-        <div id="auth-section" class="card">
-            <h2>Connexion Manager</h2>
-            <input type="password" id="manager-pin-input" placeholder="Entrez le code PIN Manager" autocomplete="off">
-            <button id="manager-login-btn">Se connecter</button>
+        <div id="auth-section">
+            <h1>Accès Manager</h1>
+            <p>Entrez le code PIN Manager :</p>
+            <input type="password" id="manager-pin-input" placeholder="Code PIN Manager">
+            <button id="manager-login-btn">Connexion</button>
             <p id="auth-error-message" class="error-message"></p>
         </div>
 
-        <div id="manager-dashboard" class="dashboard-section" style="display: none;">
-            <h2>Créer une Nouvelle Commande</h2>
-            <div class="card create-order-card">
+        <div id="manager-dashboard" style="display: none;">
+            <button onclick="location.href='index.html'" class="back-button">Retour à l'accueil</button>
+            <h1>Gestion des Commandes</h1>
+
+            <div id="create-order-section" class="card">
+                <h2>Créer une nouvelle commande</h2>
                 <div class="pin-generation-area">
-                    <span id="new-pin-display" class="generated-pin">Générez un PIN</span>
-                    <button id="generate-pin-btn" class="action-btn">Générer PIN</button>
+                    <span id="new-pin-display" class="generated-pin">Générer un N° de commande</span>
+                    <button id="generate-pin-btn">Générer N° de commande</button>
                 </div>
+                <!-- CHAMP POUR LE NOM DU CLIENT -->
+                <input type="text" id="client-name-input" placeholder="Nom du client (optionnel)">
                 <div class="cooking-options">
-                    <label>Mode de cuisson :</label>
-                    <input type="radio" id="cooking-bc" name="cookingType" value="BC" checked>
-                    <label for="cooking-bc">Bien Cuit</label>
-                    <input type="radio" id="cooking-ap" name="cookingType" value="AP">
-                    <label for="cooking-ap">À Point</label>
-                    <input type="radio" id="cooking-s" name="cookingType" value="S">
-                    <label for="cooking-s">Saignant</label>
-                    <input type="radio" id="cooking-b" name="cookingType" value="B">
-                    <label for="cooking-b">Bleu</label>
+                    <label><input type="radio" name="cookingType" value="B" checked> Bleu</label>
+                    <label><input type="radio" name="cookingType" value="S"> Saignant</label>
+                    <label><input type="radio" name="cookingType" value="AP"> À Point</label>
+                    <label><input type="radio" name="cookingType" value="BC"> Bien Cuit</label>
                 </div>
-                <button id="create-order-btn" class="validate-btn" disabled>Créer Commande</button>
+                <button id="create-order-btn" disabled>Créer la commande</button>
                 <p id="manager-order-creation-message" class="info-message"></p>
             </div>
 
-            <h2>Commandes en Cours</h2>
-            <div class="search-bar">
-                <input type="text" id="pin-search-input" placeholder="Rechercher par PIN...">
+            <div class="search-area">
+                <input type="text" id="pin-search-input" placeholder="Rechercher par Nom ou N° de commande">
             </div>
-            <div id="orders-list" class="orders-list">
-                <!-- Les commandes seront insérées ici par JavaScript -->
-                <p>Chargement des commandes...</p>
+            <div id="orders-list">
+                <p>Aucune commande en cours.</p>
             </div>
         </div>
-
-        <!-- Modale de confirmation (cachée par défaut) -->
-        <div id="confirmation-modal" class="modal">
-            <div class="modal-content">
-                <p id="modal-message"></p>
-                <div class="modal-buttons">
-                    <button id="modal-confirm-btn" class="validate-btn">Confirmer</button>
-                    <button id="modal-cancel-btn" class="cancel-btn">Annuler</button>
-                </div>
-            </div>
-        </div>
-
     </div>
     <script type="module" src="app.js"></script>
 </body>
