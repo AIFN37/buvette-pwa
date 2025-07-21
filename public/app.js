@@ -3,7 +3,7 @@ import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-messaging.js";
 import { firebaseConfig } from './firebase-config.js'; // Chemin corrigé si firebase-config.js est dans le dossier public
 
-// --- Initialisation Firebase ---
+// --- Initialisation Firebase 10:08---
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const messaging = getMessaging(app);
@@ -93,7 +93,7 @@ if (window.location.pathname.endsWith('guest.html')) {
     const validateAllOrdersBtn = document.getElementById('validate-all-orders-btn');
     const cancelAllOrdersBtn = document.getElementById('cancel-all-orders-btn');
 
-    // MODAL ELEMENTS
+    // MODAL ELEMENTS - Déclarées en const car ce sont des références fixes aux éléments DOM
     const confirmationModal = document.getElementById('confirmation-modal');
     const modalMessage = document.getElementById('modal-message');
     const modalConfirmBtn = document.getElementById('modal-confirm-btn');
@@ -124,7 +124,9 @@ if (window.location.pathname.endsWith('guest.html')) {
         if (currentOnConfirmCallback) {
             currentOnConfirmCallback();
         }
-        removeModalListeners();
+        // Réinitialise les callbacks après exécution
+        currentOnConfirmCallback = null;
+        currentOnCancelCallback = null;
     }
 
     /**
@@ -136,28 +138,16 @@ if (window.location.pathname.endsWith('guest.html')) {
         if (currentOnCancelCallback) {
             currentOnCancelCallback();
         }
-        removeModalListeners();
-    }
-
-    /**
-     * Attache les écouteurs d'événements à la modale.
-     */
-    function addModalListeners() {
-        console.log("Adding modal listeners."); // Debug log
-        modalConfirmBtn.addEventListener('click', handleConfirmClick);
-        modalCancelBtn.addEventListener('click', handleCancelClick);
-    }
-
-    /**
-     * Retire les écouteurs d'événements de la modale.
-     */
-    function removeModalListeners() {
-        console.log("Removing modal listeners."); // Debug log
-        modalConfirmBtn.removeEventListener('click', handleConfirmClick);
-        modalCancelBtn.removeEventListener('click', handleCancelClick);
+        // Réinitialise les callbacks après exécution
         currentOnConfirmCallback = null;
         currentOnCancelCallback = null;
     }
+
+    // Attache les écouteurs d'événements aux boutons de la modale une seule fois au chargement du script
+    modalConfirmBtn.addEventListener('click', handleConfirmClick);
+    modalCancelBtn.addEventListener('click', handleCancelClick);
+    console.log("Modal listeners attached globally."); // Debug log
+
 
     /**
      * Affiche la modale de confirmation et gère les actions.
@@ -174,10 +164,6 @@ if (window.location.pathname.endsWith('guest.html')) {
         // Stocke les callbacks pour les gestionnaires globaux
         currentOnConfirmCallback = onConfirmCallback;
         currentOnCancelCallback = onCancelCallback;
-
-        // Assurez-vous que les écouteurs sont attachés une seule fois ou réinitialisés
-        removeModalListeners(); // Retire les anciens pour être sûr
-        addModalListeners();    // Attache les nouveaux
     }
 
 
