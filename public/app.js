@@ -1,5 +1,4 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-// CORRECTION ICI : Importation des fonctions Firestore depuis firebase-firestore.js
 import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, orderBy, limit, getDoc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-messaging.js";
 import { firebaseConfig } from './firebase-config.js'; // Chemin corrigé : le fichier firebase-config.js est dans le même dossier 'public'
@@ -692,6 +691,138 @@ if (window.location.pathname.endsWith('manager.html')) {
         }
     }
 
+    /**
+     * Fonction pour modifier une commande.
+     * Permet de modifier le type de cuisson et/ou de forcer un nouveau statut.
+     * @param {string} orderId - L'ID de la commande à modifier.
+     */
+    async function modifyOrder(orderId) {
+        const orderRef = doc(db, "orders", orderId);
+        const docSnap = await getDoc(orderRef);
+        if (!docSnap.exists()) {
+            showManagerConfirmationModal("Commande non trouvée.", () => {});
+            return;
+        }
+        const currentOrder = docSnap.data();
+
+        showManagerConfirmationModal(`Modifier la commande ${currentOrder.pin} (Cuisson: ${currentOrder.cookingType}, Statut: ${currentOrder.status.replace('_', ' ')}).`, () => {
+            // Prompt for new cooking type
+            const newCookingTypeInput = prompt(`Entrez le nouveau type de cuisson (BC, AP, S ou B) pour ${currentOrder.pin} (actuel: ${currentOrder.cookingType}):`);
+            let newCookingType = currentOrder.cookingType;
+            if (newCookingTypeInput && ['BC', 'AP', 'S', 'B'].includes(newCookingTypeInput.toUpperCase())) {
+                newCookingType = newCookingTypeInput.toUpperCase();
+            } else if (newCookingTypeInput !== null) { // If user didn't cancel prompt
+                showManagerConfirmationModal("Type de cuisson invalide. La cuisson ne sera pas modifiée.", () => {});
+            }
+
+            // Prompt for new status
+            const newStatusInput = prompt(`Entrez le nouveau statut (pending, ready, delivered, lost_turn, client_draft) pour ${currentOrder.pin} (actuel: ${currentOrder.status.replace('_', ' ')}). Laissez vide pour ne pas modifier:`);
+            let newStatus = currentOrder.status;
+            let updateData = { cookingType: newCookingType };
+
+            if (newStatusInput !== null && newStatusInput.trim() !== '') {
+                const validStatuses = ['pending', 'ready', 'delivered', 'lost_turn', 'client_draft'];
+                const trimmedStatus = newStatusInput.trim().toLowerCase();
+                if (validStatuses.includes(trimmedStatus)) {
+                    newStatus = trimmedStatus;
+                    updateData.status = newStatus;
+
+                    // Handle specific status transitions
+                    if (newStatus === 'ready') {
+                        updateData.readyTimestamp = Date.now();
+                        updateData.relanceCount = 0;
+                    } else if (newStatus === 'pending' && currentOrder.status === 'lost_turn') {
+                        // Relancer un tour perdu
+                        updateData.readyTimestamp = null; // Reset ready timestamp
+                        updateData.relanceCount = 0; // Reset relance count
+                    } else if (newStatus === 'delivered' || newStatus === 'lost_turn') {
+                        updateData.readyTimestamp = null; // Clear timestamp if delivered or lost
+                        updateData.relanceCount = 0;
+                    }
+                } else {
+                    showManagerConfirmationModal("Statut invalide. Le statut ne sera pas modifié.", () => {});
+                }
+            }
+
+            // Perform the update
+            updateDoc(orderRef, updateData)
+                .then(() => {
+                    console.log(`Commande ${currentOrder.pin} modifiée avec succès.`);
+                    showManagerConfirmationModal(`Commande ${currentOrder.pin} mise à jour.`, () => {});
+                })
+                .catch(error => {
+                    console.error("Erreur lors de la modification de la commande :", error);
+                    showManagerConfirmationModal("Erreur lors de la modification de la commande. Veuillez réessayer.", () => {});
+                });
+        });
+    }
+
+    /**
+     * Fonction pour valider une commande (progression de statut).
+     * @param {string} orderId - L'ID de la commande à valider.
+     */
+    async function validateOrder(orderId) {
+        const orderRef = doc(db, "orders", orderId);
+        const docSnap = await getDoc(orderRef);
+        if (!docSnap.exists()) {
+            showManagerConfirmationModal("Commande non trouvée.", () => {});
+            return;
+        }
+        const currentOrder = docSnap.data();
+
+        let newStatus = currentOrder.status;
+        let updateData = {};
+        let confirmationMessage = '';
+
+        if (currentOrder.status === 'client_draft') {
+            newStatus = 'pending';
+            confirmationMessage = `Voulez-vous valider la commande brouillon ${currentOrder.pin} et la passer en préparation ?`;
+        } else if (currentOrder.status === 'pending') {
+            newStatus = 'ready';
+            updateData.readyTimestamp = Date.now();
+            updateData.relanceCount = 0;
+            confirmationMessage = `Voulez-vous marquer la commande ${currentOrder.pin} comme PRÊTE ?`;
+        } else if (currentOrder.status === 'ready' || currentOrder.status === 'relance') {
+            newStatus = 'delivered';
+            confirmationMessage = `Voulez-vous marquer la commande ${currentOrder.pin} comme LIVRÉE ?`;
+        } else if (currentOrder.status === 'lost_turn') {
+            newStatus = 'pending'; // Relancer un tour perdu
+            updateData.readyTimestamp = null;
+            updateData.relanceCount = 0;
+            confirmationMessage = `Voulez-vous relancer la commande ${currentOrder.pin} (Tour perdu) et la remettre en préparation ?`;
+        } else if (currentOrder.status === 'delivered') {
+            showManagerConfirmationModal("Cette commande est déjà livrée. Aucune action de validation possible.", () => {});
+            return;
+        }
+
+        showManagerConfirmationModal(confirmationMessage, async () => {
+            try {
+                updateData.status = newStatus;
+                await updateDoc(orderRef, updateData);
+                console.log(`Commande ${currentOrder.pin} passée au statut : ${newStatus}.`);
+            } catch (error) {
+                console.error("Erreur lors de la validation de la commande :", error);
+                showManagerConfirmationModal("Erreur lors de la validation de la commande. Veuillez réessayer.", () => {});
+            }
+        });
+    }
+
+    /**
+     * Fonction pour supprimer une commande.
+     * @param {string} orderId - L'ID de la commande à supprimer.
+     */
+    function deleteOrder(orderId) {
+        showManagerConfirmationModal(`Voulez-vous vraiment supprimer la commande ${orderId} ? Cette action est irréversible.`, async () => {
+            try {
+                await deleteDoc(doc(db, "orders", orderId));
+                console.log(`Commande ${orderId} supprimée.`);
+                // L'UI sera mise à jour via l'onSnapshot
+            } catch (error) {
+                console.error("Erreur lors de la suppression de la commande :", error);
+                showManagerConfirmationModal("Erreur lors de la suppression de la commande. Veuillez réessayer.", () => {});
+            }
+        });
+    }
 
     // Écoute des commandes en temps réel et affichage
     let unsubscribeOrders = null; // Pour pouvoir désabonner l'écoute
@@ -726,7 +857,7 @@ if (window.location.pathname.endsWith('manager.html')) {
             activeOrders.sort((a, b) => {
                 const aTime = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate().getTime() : a.createdAt) : 0;
                 const bTime = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate().getTime() : b.createdAt) : 0;
-                return aTime - bTime; // Correction de la faute de frappe ici : bBime -> bTime
+                return aTime - bTime;
             });
 
             // Combiner les listes (actives d'abord, puis livrées/perdues)
@@ -838,44 +969,6 @@ if (window.location.pathname.endsWith('manager.html')) {
             }
         });
     }
-
-    /**
-     * Placeholder pour la fonction de modification de commande.
-     * @param {string} orderId - L'ID de la commande à modifier.
-     */
-    function modifyOrder(orderId) {
-        showManagerConfirmationModal(`Fonctionnalité de modification pour la commande ${orderId} à implémenter.`, () => {
-            console.log(`Modification confirmée pour la commande ${orderId}.`);
-        });
-    }
-
-    /**
-     * Placeholder pour la fonction de validation de commande.
-     * @param {string} orderId - L'ID de la commande à valider.
-     */
-    function validateOrder(orderId) {
-        showManagerConfirmationModal(`Fonctionnalité de validation pour la commande ${orderId} à implémenter.`, () => {
-            console.log(`Validation confirmée pour la commande ${orderId}.`);
-        });
-    }
-
-    /**
-     * Placeholder pour la fonction de suppression de commande.
-     * @param {string} orderId - L'ID de la commande à supprimer.
-     */
-    function deleteOrder(orderId) {
-        showManagerConfirmationModal(`Voulez-vous vraiment supprimer la commande ${orderId} ?`, async () => {
-            try {
-                await deleteDoc(doc(db, "orders", orderId));
-                console.log(`Commande ${orderId} supprimée.`);
-                // L'UI sera mise à jour via l'onSnapshot
-            } catch (error) {
-                console.error("Erreur lors de la suppression de la commande :", error);
-                showManagerConfirmationModal("Erreur lors de la suppression de la commande. Veuillez réessayer.", () => {});
-            }
-        });
-    }
-
 
     // Gérer la recherche
     pinSearchInput.addEventListener('input', () => {
