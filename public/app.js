@@ -417,7 +417,7 @@ if (window.location.pathname.endsWith('guest.html')) {
                 }
             }
         });
-    };
+    }
 
     /**
      * Valide toutes les commandes en brouillon.
@@ -586,6 +586,9 @@ if (window.location.pathname.endsWith('manager.html')) {
     // Map to store current UI state of cooking type and status for each order being edited
     // Key: order.id, Value: { originalCookingType, currentCookingType, originalStatus, currentStatus, originalClientName, currentClientName, originalPin, currentPin }
     const orderEditState = new Map();
+
+    // Déclaration de allOrders ici pour qu'elle soit accessible globalement dans le module Manager
+    let allOrders = [];
 
     /**
      * Charge le PIN Manager depuis Firestore ou le crée s'il n'existe pas.
