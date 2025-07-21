@@ -232,7 +232,7 @@ if (window.location.pathname.endsWith('guest.html')) {
   });
 
   initializeGuestApp();
-} (voir l'état sauvegardé si besoin)
+} //(voir l'état sauvegardé si besoin)
 
 // === MODULE MANAGER ===
 if (window.location.pathname.endsWith('manager.html')) {
