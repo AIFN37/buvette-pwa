@@ -93,10 +93,11 @@ if (window.location.pathname.endsWith('guest.html')) {
     const validateAllOrdersBtn = document.getElementById('validate-all-orders-btn');
     const cancelAllOrdersBtn = document.getElementById('cancel-all-orders-btn');
 
-    const confirmationModal = document.getElementById('confirmation-modal');
-    const modalMessage = document.getElementById('modal-message');
-    const modalConfirmBtn = document.getElementById('modal-confirm-btn');
-    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+    // MODAL ELEMENTS - Declare them with 'let' so they can be reassigned
+    let confirmationModal = document.getElementById('confirmation-modal');
+    let modalMessage = document.getElementById('modal-message');
+    let modalConfirmBtn = document.getElementById('modal-confirm-btn');
+    let modalCancelBtn = document.getElementById('modal-cancel-btn');
 
     let guestPins = []; // Tableau pour stocker les PINs du client
     let guestOrdersData = {}; // Objet pour stocker les données complètes des commandes par PIN
@@ -122,25 +123,25 @@ if (window.location.pathname.endsWith('guest.html')) {
 
         console.log("Modal affichée. Attente d'interaction..."); // Debug log
 
-        // Nettoie les écouteurs précédents pour éviter les exécutions multiples
-        // On utilise cloneNode(true) pour recréer les boutons et s'assurer que les anciens écouteurs sont retirés
-        const newModalConfirmBtn = modalConfirmBtn.cloneNode(true);
-        modalConfirmBtn.parentNode.replaceChild(newModalConfirmBtn, modalConfirmBtn);
-        const newModalCancelBtn = modalCancelBtn.cloneNode(true);
-        modalCancelBtn.parentNode.replaceChild(newModalCancelBtn, modalCancelBtn);
+        // Clone and replace the buttons to effectively remove old event listeners
+        // IMPORTANT: Reassign the global variables to the new cloned nodes
+        const oldModalConfirmBtn = modalConfirmBtn;
+        const oldModalCancelBtn = modalCancelBtn;
 
-        // Références aux nouveaux boutons
-        const currentConfirmBtn = newModalConfirmBtn;
-        const currentCancelBtn = newModalCancelBtn;
+        modalConfirmBtn = oldModalConfirmBtn.cloneNode(true);
+        oldModalConfirmBtn.parentNode.replaceChild(modalConfirmBtn, oldModalConfirmBtn);
 
-        // Attache les nouveaux écouteurs
-        currentConfirmBtn.addEventListener('click', () => {
+        modalCancelBtn = oldModalCancelBtn.cloneNode(true);
+        oldModalCancelBtn.parentNode.replaceChild(modalCancelBtn, oldModalCancelBtn);
+
+        // Attache les nouveaux écouteurs aux NOUVELLES références des boutons
+        modalConfirmBtn.addEventListener('click', () => {
             console.log("Bouton Confirmer cliqué."); // Debug log
             confirmationModal.style.display = 'none';
             onConfirmCallback();
         });
 
-        currentCancelBtn.addEventListener('click', () => {
+        modalCancelBtn.addEventListener('click', () => {
             console.log("Bouton Annuler cliqué."); // Debug log
             confirmationModal.style.display = 'none';
             onCancelCallback(); // Exécute le callback d'annulation si fourni
