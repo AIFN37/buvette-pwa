@@ -350,7 +350,7 @@ if (window.location.pathname.endsWith('guest.html')) {
         }
     }
 
-    // Rend la saisie du PIN en MAJUSCULES
+    // Rend la saisie du PIN en MAJUSQUES
     if (guestPinInput) {
         guestPinInput.addEventListener('input', (event) => {
             event.target.value = event.target.value.toUpperCase();
@@ -692,8 +692,7 @@ if (window.location.pathname.endsWith('manager.html')) {
     }
 
     /**
-     * Fonction pour modifier une commande.
-     * Permet de modifier le type de cuisson et/ou de forcer un nouveau statut.
+     * Fonction pour modifier la cuisson d'une commande.
      * @param {string} orderId - L'ID de la commande à modifier.
      */
     async function modifyOrder(orderId) {
@@ -705,106 +704,69 @@ if (window.location.pathname.endsWith('manager.html')) {
         }
         const currentOrder = docSnap.data();
 
-        showManagerConfirmationModal(`Modifier la commande ${currentOrder.pin} (Cuisson: ${currentOrder.cookingType}, Statut: ${currentOrder.status.replace('_', ' ')}).`, () => {
-            // Prompt for new cooking type
-            const newCookingTypeInput = prompt(`Entrez le nouveau type de cuisson (BC, AP, S ou B) pour ${currentOrder.pin} (actuel: ${currentOrder.cookingType}):`);
+        showManagerConfirmationModal(`Modifier le type de cuisson pour la commande ${currentOrder.pin} (actuel: ${currentOrder.cookingType}). Entrez BC, AP, S ou B:`, () => {
+            const newCookingTypeInput = prompt(`Entrez le nouveau type de cuisson (BC, AP, S ou B) pour ${currentOrder.pin}:`);
             let newCookingType = currentOrder.cookingType;
             if (newCookingTypeInput && ['BC', 'AP', 'S', 'B'].includes(newCookingTypeInput.toUpperCase())) {
                 newCookingType = newCookingTypeInput.toUpperCase();
-            } else if (newCookingTypeInput !== null) { // If user didn't cancel prompt
+                updateDoc(orderRef, { cookingType: newCookingType })
+                    .then(() => {
+                        console.log(`Cuisson de la commande ${currentOrder.pin} modifiée avec succès.`);
+                        showManagerConfirmationModal(`Cuisson de la commande ${currentOrder.pin} mise à jour.`, () => {});
+                    })
+                    .catch(error => {
+                        console.error("Erreur lors de la modification de la cuisson :", error);
+                        showManagerConfirmationModal("Erreur lors de la modification de la cuisson. Veuillez réessayer.", () => {});
+                    });
+            } else if (newCookingTypeInput !== null) { // Si l'utilisateur n'a pas annulé le prompt
                 showManagerConfirmationModal("Type de cuisson invalide. La cuisson ne sera pas modifiée.", () => {});
             }
-
-            // Prompt for new status
-            const newStatusInput = prompt(`Entrez le nouveau statut (pending, ready, delivered, lost_turn, client_draft) pour ${currentOrder.pin} (actuel: ${currentOrder.status.replace('_', ' ')}). Laissez vide pour ne pas modifier:`);
-            let newStatus = currentOrder.status;
-            let updateData = { cookingType: newCookingType };
-
-            if (newStatusInput !== null && newStatusInput.trim() !== '') {
-                const validStatuses = ['pending', 'ready', 'delivered', 'lost_turn', 'client_draft'];
-                const trimmedStatus = newStatusInput.trim().toLowerCase();
-                if (validStatuses.includes(trimmedStatus)) {
-                    newStatus = trimmedStatus;
-                    updateData.status = newStatus;
-
-                    // Handle specific status transitions
-                    if (newStatus === 'ready') {
-                        updateData.readyTimestamp = Date.now();
-                        updateData.relanceCount = 0;
-                    } else if (newStatus === 'pending' && currentOrder.status === 'lost_turn') {
-                        // Relancer un tour perdu
-                        updateData.readyTimestamp = null; // Reset ready timestamp
-                        updateData.relanceCount = 0; // Reset relance count
-                    } else if (newStatus === 'delivered' || newStatus === 'lost_turn') {
-                        updateData.readyTimestamp = null; // Clear timestamp if delivered or lost
-                        updateData.relanceCount = 0;
-                    }
-                } else {
-                    showManagerConfirmationModal("Statut invalide. Le statut ne sera pas modifié.", () => {});
-                }
-            }
-
-            // Perform the update
-            updateDoc(orderRef, updateData)
-                .then(() => {
-                    console.log(`Commande ${currentOrder.pin} modifiée avec succès.`);
-                    showManagerConfirmationModal(`Commande ${currentOrder.pin} mise à jour.`, () => {});
-                })
-                .catch(error => {
-                    console.error("Erreur lors de la modification de la commande :", error);
-                    showManagerConfirmationModal("Erreur lors de la modification de la commande. Veuillez réessayer.", () => {});
-                });
         });
     }
 
     /**
-     * Fonction pour valider une commande (progression de statut).
+     * Fonction pour valider une commande : applique le statut sélectionné par les boutons radio.
      * @param {string} orderId - L'ID de la commande à valider.
      */
     async function validateOrder(orderId) {
         const orderRef = doc(db, "orders", orderId);
-        const docSnap = await getDoc(orderRef);
-        if (!docSnap.exists()) {
-            showManagerConfirmationModal("Commande non trouvée.", () => {});
+        const orderItemElement = document.querySelector(`.order-item[data-id="${orderId}"]`);
+        if (!orderItemElement) {
+            console.error(`Order item element not found for ID: ${orderId}`);
+            // Using alert for critical error that prevents UI interaction
+            alert("Erreur: Élément de commande non trouvé. Impossible de valider.");
             return;
         }
-        const currentOrder = docSnap.data();
 
-        let newStatus = currentOrder.status;
-        let updateData = {};
-        let confirmationMessage = '';
+        const selectedRadio = orderItemElement.querySelector(`input[name="status-${orderId}"]:checked`);
+        if (!selectedRadio) {
+            alert("Veuillez sélectionner un statut pour la commande avant de valider.");
+            return;
+        }
 
-        if (currentOrder.status === 'client_draft') {
-            newStatus = 'pending';
-            confirmationMessage = `Voulez-vous valider la commande brouillon ${currentOrder.pin} et la passer en préparation ?`;
-        } else if (currentOrder.status === 'pending') {
-            newStatus = 'ready';
+        const newStatus = selectedRadio.value;
+        const updateData = { status: newStatus };
+
+        // Handle specific status transitions for timestamps/relanceCount
+        if (newStatus === 'ready') {
             updateData.readyTimestamp = Date.now();
             updateData.relanceCount = 0;
-            confirmationMessage = `Voulez-vous marquer la commande ${currentOrder.pin} comme PRÊTE ?`;
-        } else if (currentOrder.status === 'ready' || currentOrder.status === 'relance') {
-            newStatus = 'delivered';
-            confirmationMessage = `Voulez-vous marquer la commande ${currentOrder.pin} comme LIVRÉE ?`;
-        } else if (currentOrder.status === 'lost_turn') {
-            newStatus = 'pending'; // Relancer un tour perdu
+        } else if (newStatus === 'pending') { // If moving to pending (e.g., from lost_turn or client_draft)
             updateData.readyTimestamp = null;
             updateData.relanceCount = 0;
-            confirmationMessage = `Voulez-vous relancer la commande ${currentOrder.pin} (Tour perdu) et la remettre en préparation ?`;
-        } else if (currentOrder.status === 'delivered') {
-            showManagerConfirmationModal("Cette commande est déjà livrée. Aucune action de validation possible.", () => {});
-            return;
+        } else if (newStatus === 'delivered' || newStatus === 'lost_turn') {
+            updateData.readyTimestamp = null;
+            updateData.relanceCount = 0;
         }
 
-        showManagerConfirmationModal(confirmationMessage, async () => {
-            try {
-                updateData.status = newStatus;
-                await updateDoc(orderRef, updateData);
-                console.log(`Commande ${currentOrder.pin} passée au statut : ${newStatus}.`);
-            } catch (error) {
-                console.error("Erreur lors de la validation de la commande :", error);
-                showManagerConfirmationModal("Erreur lors de la validation de la commande. Veuillez réessayer.", () => {});
-            }
-        });
+        try {
+            await updateDoc(orderRef, updateData);
+            console.log(`Commande ${orderId} mise à jour au statut : ${newStatus}.`);
+            // Pas de modale de confirmation ici, comme demandé "sans dialogue modale inutile"
+        } catch (error) {
+            console.error("Erreur lors de la validation de la commande :", error);
+            showManagerConfirmationModal("Erreur lors de la validation de la commande. Veuillez réessayer.", () => {});
+        }
     }
 
     /**
@@ -923,20 +885,26 @@ if (window.location.pathname.endsWith('manager.html')) {
                 displayStatusText = 'Tour Perdu';
             }
 
-
-            // Le contenu de la ligne : Référence + Type de Cuisson (Abréviation colorée)
+            // Contenu de la ligne : Référence + Type de Cuisson (Abréviation colorée) + Radio boutons de statut + Boutons d'action
             orderItem.innerHTML = `
                 <span class="pin">${order.pin}</span>
                 <span class="cooking-abbr ${cookingColorClass}">${order.cookingType}</span>
-                <span class="status-text">${displayStatusText}</span>
+                <div class="status-controls">
+                    ${order.status === 'client_draft' ? `<span class="status-message ${statusClass}">${displayStatusText}</span>` : `
+                        <label><input type="radio" name="status-${order.id}" value="pending" ${order.status === 'pending' ? 'checked' : ''}> En préparation</label>
+                        <label><input type="radio" name="status-${order.id}" value="ready" ${order.status === 'ready' ? 'checked' : ''}> Prêt</label>
+                        <label><input type="radio" name="status-${order.id}" value="delivered" ${order.status === 'delivered' ? 'checked' : ''}> Livré</label>
+                        <label><input type="radio" name="status-${order.id}" value="lost_turn" ${order.status === 'lost_turn' ? 'checked' : ''}> Tour Perdu</label>
+                    `}
+                </div>
                 <div class="order-actions">
-                    <button class="action-btn modify-order-btn" data-id="${order.id}" title="Modifier">
+                    <button class="action-btn modify-order-btn" data-id="${order.id}" title="Modifier cuisson">
                         <i class="fas fa-pencil-alt"></i>
                     </button>
-                    <button class="action-btn validate-order-btn" data-id="${order.id}" title="Valider">
+                    <button class="action-btn validate-order-btn" data-id="${order.id}" title="Appliquer statut sélectionné">
                         <i class="fas fa-check"></i>
                     </button>
-                    <button class="action-btn delete-order-btn" data-id="${order.id}" title="Supprimer">
+                    <button class="action-btn delete-order-btn" data-id="${order.id}" title="Supprimer commande">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
