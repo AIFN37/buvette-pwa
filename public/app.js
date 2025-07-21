@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, orderBy, limit, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, orderBy, limit, getDoc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-messaging.js";
 import { firebaseConfig } from './firebase-config.js'; // Chemin corrigé si firebase-config.js est dans le dossier public
 
@@ -78,13 +78,8 @@ onMessage(messaging, (payload) => {
     playNotificationSound();
 
     // Mettre à jour l'interface du Guest si c'est la page active et que le PIN correspond
-    // Note: Avec les commandes multiples, il faudrait s'assurer que le payload.data.pin
-    // correspond à l'un des PINs affichés pour le Guest.
     if (window.location.pathname.endsWith('guest.html')) {
-        // Déclenche une mise à jour complète de la liste des commandes du Guest
-        // Cela va re-fetcher les données et mettre à jour l'UI
-        // (La logique de mise à jour spécifique par notification est gérée dans renderGuestOrders)
-        initializeGuestApp();
+        initializeGuestApp(); // Déclenche une mise à jour complète de la liste des commandes du Guest
     }
 });
 
@@ -116,23 +111,42 @@ if (window.location.pathname.endsWith('guest.html')) {
     };
 
     /**
-     * Affiche ou cache la modale de confirmation.
+     * Affiche la modale de confirmation et gère les actions.
      * @param {string} message - Le message à afficher dans la modale.
-     * @param {Function} onConfirm - La fonction à exécuter si l'utilisateur confirme.
+     * @param {Function} onConfirmCallback - La fonction à exécuter si l'utilisateur confirme.
+     * @param {Function} [onCancelCallback] - La fonction à exécuter si l'utilisateur annule (optionnel).
      */
-    function showConfirmationModal(message, onConfirm) {
+    function showConfirmationModal(message, onConfirmCallback, onCancelCallback = () => {}) {
         modalMessage.innerText = message;
         confirmationModal.style.display = 'flex'; // Affiche la modale
 
-        modalConfirmBtn.onclick = () => {
-            confirmationModal.style.display = 'none';
-            onConfirm();
-        };
+        console.log("Modal affichée. Attente d'interaction..."); // Debug log
 
-        modalCancelBtn.onclick = () => {
+        // Nettoie les écouteurs précédents pour éviter les exécutions multiples
+        // On utilise cloneNode(true) pour recréer les boutons et s'assurer que les anciens écouteurs sont retirés
+        const newModalConfirmBtn = modalConfirmBtn.cloneNode(true);
+        modalConfirmBtn.parentNode.replaceChild(newModalConfirmBtn, modalConfirmBtn);
+        const newModalCancelBtn = modalCancelBtn.cloneNode(true);
+        modalCancelBtn.parentNode.replaceChild(newModalCancelBtn, modalCancelBtn);
+
+        // Références aux nouveaux boutons
+        const currentConfirmBtn = newModalConfirmBtn;
+        const currentCancelBtn = newModalCancelBtn;
+
+        // Attache les nouveaux écouteurs
+        currentConfirmBtn.addEventListener('click', () => {
+            console.log("Bouton Confirmer cliqué."); // Debug log
             confirmationModal.style.display = 'none';
-        };
+            onConfirmCallback();
+        });
+
+        currentCancelBtn.addEventListener('click', () => {
+            console.log("Bouton Annuler cliqué."); // Debug log
+            confirmationModal.style.display = 'none';
+            onCancelCallback(); // Exécute le callback d'annulation si fourni
+        });
     }
+
 
     /**
      * Rend la liste des commandes du Guest dans l'interface utilisateur.
@@ -143,6 +157,8 @@ if (window.location.pathname.endsWith('guest.html')) {
         if (guestPins.length === 0) {
             guestOrdersList.innerHTML = '<p>Aucune commande ajoutée pour le moment.</p>';
             ordersListSection.style.display = 'none';
+            validateAllOrdersBtn.style.display = 'none';
+            cancelAllOrdersBtn.style.display = 'none';
             return;
         }
 
@@ -247,7 +263,7 @@ if (window.location.pathname.endsWith('guest.html')) {
             renderGuestOrders(); // Met à jour l'affichage
         } catch (error) {
             console.error("Erreur lors de la création de la commande brouillon :", error);
-            alert("Impossible d'ajouter la commande. Vérifiez votre connexion ou les règles Firestore."); // Utiliser une modale plus tard
+            showConfirmationModal("Impossible d'ajouter la commande. Vérifiez votre connexion ou les règles Firestore.", () => {});
         }
     });
 
@@ -259,24 +275,32 @@ if (window.location.pathname.endsWith('guest.html')) {
     function editGuestOrder(pinToEdit) {
         const order = guestOrdersData[pinToEdit];
         if (!order || order.status !== 'client_draft') {
-            alert("Cette commande ne peut pas être modifiée.");
+            showConfirmationModal("Cette commande ne peut pas être modifiée car elle n'est pas en brouillon.", () => {});
             return;
         }
 
-        // Pour l'exemple, nous allons simplement demander une nouvelle cuisson via prompt.
-        // En vrai, il faudrait une modale ou une interface de modification.
-        const newCookingType = prompt(`Modifier la cuisson pour le PIN ${pinToEdit} (actuel: ${order.cookingType}). Entrez BC, AP, S ou B:`);
-        if (newCookingType && ['BC', 'AP', 'S', 'B'].includes(newCookingType.toUpperCase())) {
-            const orderId = Object.keys(guestOrdersData).find(key => guestOrdersData[key].pin === pinToEdit);
-            if (orderId) {
-                updateDoc(doc(db, "orders", orderId), { cookingType: newCookingType.toUpperCase() })
-                    .then(() => console.log(`Cuisson du PIN ${pinToEdit} mise à jour.`))
-                    .catch(error => console.error("Erreur mise à jour cuisson :", error));
+        showConfirmationModal(`Modifier la cuisson pour le PIN ${pinToEdit} (actuel: ${order.cookingType}). Entrez BC, AP, S ou B:`, async () => {
+            const newCookingTypeInput = prompt(`Entrez le nouveau type de cuisson (BC, AP, S ou B) pour ${pinToEdit}:`);
+            if (newCookingTypeInput && ['BC', 'AP', 'S', 'B'].includes(newCookingTypeInput.toUpperCase())) {
+                const newCookingType = newCookingTypeInput.toUpperCase();
+                const orderId = order.id; // Utilise l'ID stocké dans guestOrdersData
+
+                if (orderId) {
+                    try {
+                        await updateDoc(doc(db, "orders", orderId), { cookingType: newCookingType });
+                        console.log(`Cuisson du PIN ${pinToEdit} mise à jour.`);
+                        // L'UI sera mise à jour via l'onSnapshot
+                    } catch (error) {
+                        console.error("Erreur mise à jour cuisson :", error);
+                        showConfirmationModal("Impossible de modifier la cuisson.", () => {});
+                    }
+                }
+            } else if (newCookingTypeInput !== null) { // Si l'utilisateur n'a pas annulé le prompt
+                showConfirmationModal("Type de cuisson invalide. Veuillez entrer BC, AP, S ou B.", () => {});
             }
-        } else if (newCookingType !== null) { // Si l'utilisateur n'a pas annulé
-            alert("Type de cuisson invalide. Veuillez entrer BC, AP, S ou B.");
-        }
+        });
     }
+
 
     /**
      * Gère la suppression d'une commande (en brouillon).
@@ -285,12 +309,12 @@ if (window.location.pathname.endsWith('guest.html')) {
     function deleteGuestOrder(pinToDelete) {
         const order = guestOrdersData[pinToDelete];
         if (!order || order.status !== 'client_draft') {
-            alert("Cette commande ne peut pas être supprimée.");
+            showConfirmationModal("Cette commande ne peut pas être supprimée car elle n'est pas en brouillon.", () => {});
             return;
         }
 
         showConfirmationModal(`Voulez-vous vraiment supprimer la commande ${pinToDelete} ?`, async () => {
-            const orderIdToDelete = Object.keys(guestOrdersData).find(key => guestOrdersData[key].pin === pinToDelete);
+            const orderIdToDelete = order.id; // Utilise l'ID stocké dans guestOrdersData
 
             if (orderIdToDelete) {
                 try {
@@ -312,7 +336,7 @@ if (window.location.pathname.endsWith('guest.html')) {
                     renderGuestOrders(); // Met à jour l'affichage
                 } catch (error) {
                     console.error("Erreur lors de la suppression de la commande :", error);
-                    alert("Impossible de supprimer la commande. Veuillez réessayer.");
+                    showConfirmationModal("Impossible de supprimer la commande. Veuillez réessayer.", () => {});
                 }
             }
         });
@@ -325,12 +349,12 @@ if (window.location.pathname.endsWith('guest.html')) {
     function validateSingleOrder(pinToValidate) {
         const order = guestOrdersData[pinToValidate];
         if (!order || order.status !== 'client_draft') {
-            alert("Cette commande ne peut pas être validée.");
+            showConfirmationModal("Cette commande ne peut pas être validée car elle n'est pas en brouillon.", () => {});
             return;
         }
 
         showConfirmationModal(`Voulez-vous valider la commande ${pinToValidate} ? Elle sera envoyée à la buvette.`, async () => {
-            const orderIdToValidate = Object.keys(guestOrdersData).find(key => guestOrdersData[key].pin === pinToValidate);
+            const orderIdToValidate = order.id; // Utilise l'ID stocké dans guestOrdersData
             if (orderIdToValidate) {
                 try {
                     await updateDoc(doc(db, "orders", orderIdToValidate), { status: "pending" });
@@ -338,7 +362,7 @@ if (window.location.pathname.endsWith('guest.html')) {
                     // L'UI sera mise à jour via l'onSnapshot
                 } catch (error) {
                     console.error("Erreur lors de la validation de la commande :", error);
-                    alert("Impossible de valider la commande. Veuillez réessayer.");
+                    showConfirmationModal("Impossible de valider la commande. Veuillez réessayer.", () => {});
                 }
             }
         });
@@ -351,19 +375,20 @@ if (window.location.pathname.endsWith('guest.html')) {
         const unvalidatedPins = guestPins.filter(pin => guestOrdersData[pin] && guestOrdersData[pin].status === 'client_draft');
 
         if (unvalidatedPins.length === 0) {
-            alert("Aucune commande en brouillon à valider.");
+            showConfirmationModal("Aucune commande en brouillon à valider.", () => {});
             return;
         }
 
         showConfirmationModal(`Voulez-vous valider toutes vos ${unvalidatedPins.length} commandes en brouillon ?`, async () => {
             for (const pin of unvalidatedPins) {
-                const orderId = Object.keys(guestOrdersData).find(key => guestOrdersData[key].pin === pin);
+                const orderId = guestOrdersData[pin].id; // Utilise l'ID stocké dans guestOrdersData
                 if (orderId) {
                     try {
                         await updateDoc(doc(db, "orders", orderId), { status: "pending" });
                         console.log(`Commande ${pin} validée.`);
                     } catch (error) {
                         console.error(`Erreur lors de la validation de la commande ${pin}:`, error);
+                        // Ne pas bloquer la boucle pour une seule erreur
                     }
                 }
             }
@@ -378,13 +403,13 @@ if (window.location.pathname.endsWith('guest.html')) {
         const unvalidatedPins = guestPins.filter(pin => guestOrdersData[pin] && guestOrdersData[pin].status === 'client_draft');
 
         if (unvalidatedPins.length === 0) {
-            alert("Aucune commande en brouillon à annuler.");
+            showConfirmationModal("Aucune commande en brouillon à annuler.", () => {});
             return;
         }
 
         showConfirmationModal(`Voulez-vous annuler toutes vos ${unvalidatedPins.length} commandes en brouillon ?`, async () => {
             for (const pin of unvalidatedPins) {
-                const orderId = Object.keys(guestOrdersData).find(key => guestOrdersData[key].pin === pin);
+                const orderId = guestOrdersData[pin].id; // Utilise l'ID stocké dans guestOrdersData
                 if (orderId) {
                     try {
                         // Désabonner l'écoute Firestore avant de supprimer
@@ -398,6 +423,7 @@ if (window.location.pathname.endsWith('guest.html')) {
                         guestPins = guestPins.filter(p => p !== pin);
                     } catch (error) {
                         console.error(`Erreur lors de l'annulation de la commande ${pin}:`, error);
+                        // Ne pas bloquer la boucle pour une seule erreur
                     }
                 }
             }
@@ -435,6 +461,7 @@ if (window.location.pathname.endsWith('guest.html')) {
         }, (error) => {
             console.error(`Erreur lors de l'écoute de la commande ${pin} (${orderId}) :`, error);
             // Gérer l'erreur d'écoute, par exemple, informer l'utilisateur
+            showConfirmationModal("Erreur de connexion à une commande. Veuillez réessayer.", () => {});
         });
     }
 
@@ -447,22 +474,31 @@ if (window.location.pathname.endsWith('guest.html')) {
         guestPins = storedPins; // Met à jour la liste globale des PINs
 
         // Pour chaque PIN, démarre une écoute Firestore
-        guestPins.forEach(async (pin) => {
-            // Tente de trouver l'ID du document Firestore correspondant au PIN
-            // C'est nécessaire car on stocke les PINs, pas les IDs de documents
+        // Utilise Promise.all pour attendre que toutes les requêtes soient terminées
+        const promises = guestPins.map(async (pin) => {
             const q = query(collection(db, "orders"), where("pin", "==", pin), limit(1));
-            const querySnapshot = await getDocs(q); // Utilise getDocs pour une requête ponctuelle
-
-            if (!querySnapshot.empty) {
-                const docSnapshot = querySnapshot.docs[0];
-                startListeningToGuestOrder(docSnapshot.id, pin);
-            } else {
-                console.warn(`PIN ${pin} trouvé dans localStorage mais pas de commande correspondante dans Firestore. Suppression.`);
-                guestPins = guestPins.filter(p => p !== pin); // Nettoie le localStorage
-                localStorage.setItem(LOCAL_STORAGE_PINS_KEY, JSON.stringify(guestPins));
-                renderGuestOrders(); // Re-rend la liste
+            try {
+                const querySnapshot = await getDocs(q); // Utilise getDocs pour une requête ponctuelle
+                if (!querySnapshot.empty) {
+                    const docSnapshot = querySnapshot.docs[0];
+                    startListeningToGuestOrder(docSnapshot.id, pin);
+                } else {
+                    console.warn(`PIN ${pin} trouvé dans localStorage mais pas de commande correspondante dans Firestore. Suppression.`);
+                    return pin; // Retourne le PIN pour le filtrer plus tard
+                }
+            } catch (error) {
+                console.error(`Erreur lors de la recherche de la commande pour le PIN ${pin}:`, error);
+                return pin; // Retourne le PIN pour le filtrer en cas d'erreur
             }
+            return null; // Pas d'erreur, pas de PIN à filtrer
         });
+
+        const pinsToRemove = (await Promise.all(promises)).filter(p => p !== null);
+
+        if (pinsToRemove.length > 0) {
+            guestPins = guestPins.filter(p => !pinsToRemove.includes(p));
+            localStorage.setItem(LOCAL_STORAGE_PINS_KEY, JSON.stringify(guestPins));
+        }
 
         renderGuestOrders(); // Rend la liste initiale (peut être vide)
     }
@@ -623,6 +659,8 @@ if (window.location.pathname.endsWith('manager.html')) {
      * Démarre l'écoute en temps réel des commandes dans Firestore pour le Manager.
      */
     function startOrderListener() {
+        let unsubscribeOrders = null; // Pour pouvoir désabonner l'écoute
+
         if (unsubscribeOrders) {
             unsubscribeOrders(); // Désabonner si déjà actif
         }
