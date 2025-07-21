@@ -87,14 +87,13 @@ onMessage(messaging, (payload) => {
 
 // --- Logique du module GUEST ---
 if (window.location.pathname.endsWith('guest.html')) {
-    // NOUVEAUX ÉLÉMENTS DOM POUR LE GUEST (selon guest.html refactorisé)
-    const pinInputSection = document.getElementById('pin-input-section');
-    const guestPinInput = document.getElementById('guest-pin-input');
-    const addPinBtn = document.getElementById('add-pin-btn');
-    const pinErrorMessage = document.getElementById('pin-error-message');
-    const guestOrdersDisplay = document.getElementById('guest-orders-display');
+    const createOrderSection = document.getElementById('create-order-section');
+    const addOrderBtn = document.getElementById('add-order-btn');
+    const cookingTypeRadios = document.querySelectorAll('input[name="cookingType"]');
+    const ordersListSection = document.getElementById('orders-list-section');
     const guestOrdersList = document.getElementById('guest-orders-list');
-    const clearAllPinsBtn = document.getElementById('clear-all-pins-btn');
+    const validateAllOrdersBtn = document.getElementById('validate-all-orders-btn');
+    const cancelAllOrdersBtn = document.getElementById('cancel-all-orders-btn');
 
     // MODAL ELEMENTS - Déclarées en const car ce sont des références fixes aux éléments DOM
     const confirmationModal = document.getElementById('confirmation-modal');
@@ -106,10 +105,9 @@ if (window.location.pathname.endsWith('guest.html')) {
     let currentOnConfirmCallback = null;
     let currentOnCancelCallback = null;
 
-    let guestPins = []; // Tableau pour stocker les références de commande du client
-    let guestOrdersData = {}; // Objet pour stocker les données complètes des commandes par référence
-    let unsubscribeGuestOrders = {}; // Objet pour stocker les fonctions de désabonnement par référence
-    let countdownIntervals = {}; // Objet pour stocker les intervalles de compte à rebours par référence
+    let guestPins = []; // Tableau pour stocker les PINs du client
+    let guestOrdersData = {}; // Objet pour stocker les données complètes des commandes par PIN
+    let unsubscribeGuestOrders = {}; // Objet pour stocker les fonctions de désabonnement par PIN
 
     // Mappage des abréviations de cuisson aux noms complets et classes CSS
     const cookingTypesMap = {
@@ -131,6 +129,7 @@ if (window.location.pathname.endsWith('guest.html')) {
         // Réinitialise les callbacks après exécution
         currentOnConfirmCallback = null;
         currentOnCancelCallback = null;
+        removeModalListeners(); // Ensure listeners are removed after action
     }
 
     /**
@@ -145,18 +144,38 @@ if (window.location.pathname.endsWith('guest.html')) {
         // Réinitialise les callbacks après exécution
         currentOnConfirmCallback = null;
         currentOnCancelCallback = null;
+        removeModalListeners(); // Ensure listeners are removed after action
     }
 
-    // Attache les écouteurs d'événements aux boutons de la modale une seule fois au chargement du script
-    // Ces écouteurs resteront actifs et appelleront les callbacks stockés dans currentOnConfirmCallback/currentOnCancelCallback
-    if (modalConfirmBtn && modalCancelBtn) {
-        modalConfirmBtn.addEventListener('click', handleConfirmClick);
-        modalCancelBtn.addEventListener('click', handleCancelClick);
-        console.log("Modal listeners attached globally.");
-    } else {
-        console.error("Un ou plusieurs boutons de la modale (confirmer/annuler) n'ont pas été trouvés. Impossible d'attacher les écouteurs.");
+    /**
+     * Attache les écouteurs d'événements à la modale.
+     */
+    function addModalListeners() {
+        // Remove existing listeners first to prevent duplicates
+        removeModalListeners(); // This ensures we only have one set of listeners at any time
+
+        if (modalConfirmBtn) {
+            modalConfirmBtn.addEventListener('click', handleConfirmClick);
+            console.log("Confirm button listener attached.");
+        }
+        if (modalCancelBtn) {
+            modalCancelBtn.addEventListener('click', handleCancelClick);
+            console.log("Cancel button listener attached.");
+        }
     }
 
+    /**
+     * Retire les écouteurs d'événements de la modale.
+     */
+    function removeModalListeners() {
+        if (modalConfirmBtn) {
+            modalConfirmBtn.removeEventListener('click', handleConfirmClick);
+        }
+        if (modalCancelBtn) {
+            modalCancelBtn.removeEventListener('click', handleCancelClick);
+        }
+        console.log("Modal listeners removed.");
+    }
 
     /**
      * Affiche la modale de confirmation et gère les actions.
@@ -173,6 +192,9 @@ if (window.location.pathname.endsWith('guest.html')) {
         // Stocke les callbacks pour les gestionnaires globaux
         currentOnConfirmCallback = onConfirmCallback;
         currentOnCancelCallback = onCancelCallback;
+
+        // Attache les écouteurs pour cette instance de la modale
+        addModalListeners();
     }
 
 
@@ -184,254 +206,281 @@ if (window.location.pathname.endsWith('guest.html')) {
 
         if (guestPins.length === 0) {
             guestOrdersList.innerHTML = '<p>Aucune commande ajoutée pour le moment.</p>';
-            guestOrdersDisplay.style.display = 'none'; // Cache la section d'affichage complète
+            ordersListSection.style.display = 'none';
+            validateAllOrdersBtn.style.display = 'none';
+            cancelAllOrdersBtn.style.display = 'none';
             return;
         }
 
-        guestOrdersDisplay.style.display = 'block'; // Affiche la section d'affichage
+        ordersListSection.style.display = 'block'; // Affiche la section de la liste
 
-        // Tri des commandes pour l'affichage (les commandes actives d'abord, par createdAt)
-        const sortedOrders = Object.values(guestOrdersData).sort((a, b) => {
-            // Ordre des statuts actifs
-            const statusOrder = { 'client_draft': 1, 'pending': 2, 'ready': 3, 'relance': 4, 'delivered': 5, 'lost_turn': 6 };
-            const statusA = statusOrder[a.status] || 99;
-            const statusB = statusOrder[b.status] || 99;
-
-            if (statusA !== statusB) {
-                return statusA - statusB;
-            }
-            // Si les statuts sont identiques, trier par createdAt
-            const aTime = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate().getTime() : a.createdAt) : 0;
-            const bTime = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate().getTime() : b.createdAt) : 0;
-            return aTime - bTime;
-        });
+        // Vérifie si toutes les commandes sont validées pour activer/désactiver les boutons globaux
+        const hasUnvalidatedOrders = Object.values(guestOrdersData).some(order => order.status === 'client_draft');
+        validateAllOrdersBtn.style.display = hasUnvalidatedOrders ? 'inline-block' : 'none';
+        cancelAllOrdersBtn.style.display = hasUnvalidatedOrders ? 'inline-block' : 'none';
 
 
-        sortedOrders.forEach(order => {
+        guestPins.forEach(pin => {
+            const order = guestOrdersData[pin];
+            if (!order) return; // Si les données ne sont pas encore chargées, passe
+
             const orderItem = document.createElement('div');
-            orderItem.classList.add('guest-order-item'); // Classe pour le style
-            orderItem.dataset.pin = order.pin; // Stocke la référence comme attribut de données
+            orderItem.classList.add('guest-order-item');
+            orderItem.dataset.pin = pin;
 
             const cookingInfo = cookingTypesMap[order.cookingType] || { name: 'Inconnu', class: '' };
 
             let statusText = '';
             let statusClass = '';
-            let countdownHtml = ''; // Pour le compte à rebours
-            const lastUpdateTimestamp = order.createdAt ? new Date(order.createdAt.toDate ? order.createdAt.toDate() : order.createdAt).toLocaleString() : 'N/A';
-
+            let enableButtons = false; // Par défaut, les boutons sont désactivés
 
             if (order.status === 'client_draft') {
                 statusText = 'Brouillon';
                 statusClass = 'client-draft';
+                enableButtons = true; // Activer les boutons si en brouillon
             } else if (order.status === 'pending') {
                 statusText = 'En préparation...';
                 statusClass = 'pending';
             } else if (order.status === 'ready') {
                 statusText = 'PRÊT !';
                 statusClass = 'ready';
-                countdownHtml = `<span class="countdown-timer" id="countdown-${order.pin}"></span>`;
-                startCountdown(order.pin, order.readyTimestamp); // Démarre/met à jour le compte à rebours
             } else if (order.status === 'relance') {
                 statusText = 'Dépêchez-vous !';
                 statusClass = 'relance';
-                countdownHtml = `<span class="countdown-timer" id="countdown-${order.pin}"></span>`;
-                startCountdown(order.pin, order.readyTimestamp); // Démarre/met à jour le compte à rebours
             } else if (order.status === 'delivered') {
                 statusText = 'Livré. Merci !';
                 statusClass = 'delivered';
-                stopCountdown(order.pin); // Arrête le compte à rebours si livré
             } else if (order.status === 'lost_turn') {
                 statusText = 'Tour perdu !';
                 statusClass = 'lost-turn';
-                stopCountdown(order.pin); // Arrête le compte à rebours si tour perdu
             }
 
-            // Structure comme décrit : Référence (2 lignes), Cuisson, Statut + Timestamp, Compte à rebours
             orderItem.innerHTML = `
-                <div class="order-grid">
-                    <div class="pin-cell">
-                        <span class="pin-display-large">${order.pin}</span>
-                    </div>
-                    <div class="cooking-cell">
-                        <span class="cooking-type ${cookingInfo.class}">${cookingInfo.name}</span>
-                    </div>
-                    <div class="status-cell">
-                        <span class="status-message ${statusClass}">${statusText}</span>
-                        <span class="timestamp-small">MàJ: ${lastUpdateTimestamp}</span>
-                    </div>
-                    <div class="countdown-cell">
-                        ${countdownHtml}
-                    </div>
+                <span class="pin-display">${order.pin}</span>
+                <span class="cooking-type ${cookingInfo.class}">${cookingInfo.name}</span>
+                <span class="status-message ${statusClass}">${statusText}</span>
+                <div class="action-buttons">
+                    <button class="modify-btn" title="Modifier" ${enableButtons ? '' : 'disabled'}>
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                    <button class="delete-btn" title="Supprimer" ${enableButtons ? '' : 'disabled'}>
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <button class="validate-single-btn" title="Valider cette commande" ${enableButtons ? '' : 'disabled'}>
+                        <i class="fas fa-check"></i>
+                    </button>
                 </div>
             `;
             guestOrdersList.appendChild(orderItem);
+
+            // Attacher les écouteurs d'événements aux boutons individuels
+            if (enableButtons) {
+                orderItem.querySelector('.modify-btn').addEventListener('click', () => editGuestOrder(pin));
+                orderItem.querySelector('.delete-btn').addEventListener('click', () => deleteGuestOrder(pin));
+                orderItem.querySelector('.validate-single-btn').addEventListener('click', () => validateSingleOrder(pin));
+            }
         });
     }
 
     /**
-     * Démarre le compte à rebours pour une commande spécifique.
-     * Met à jour le temps restant et ajuste le message/style du statut localement.
-     * @param {string} pin - La référence de la commande.
-     * @param {object} readyTimestamp - Le timestamp Firestore (ou ms) quand la commande est devenue prête.
+     * Gère la création d'une nouvelle commande.
      */
-    function startCountdown(pin, readyTimestamp) {
-        // Efface tout intervalle existant pour cette référence
-        if (countdownIntervals[pin]) {
-            clearInterval(countdownIntervals[pin]);
-        }
+    addOrderBtn.addEventListener('click', async () => {
+        const selectedCookingType = document.querySelector('input[name="cookingType"]:checked').value;
+        const newPin = generatePin();
+        const fcmToken = await requestNotificationPermissionAndGetToken();
 
-        const startTime = readyTimestamp.toMillis ? readyTimestamp.toMillis() : readyTimestamp; // Gère les timestamps Firebase
-
-        const updateCountdownAndStatus = () => {
-            const now = Date.now();
-            const elapsed = now - startTime;
-            const totalDuration = RELANCE_INTERVAL_MS * MAX_RELANCES; // 90 seconds
-            const firstRelanceThreshold = RELANCE_INTERVAL_MS; // 30 seconds
-            const remaining = Math.max(0, totalDuration - elapsed);
-
-            const seconds = Math.floor(remaining / 1000);
-            const countdownElement = document.getElementById(`countdown-${pin}`);
-            const orderItemElement = guestOrdersList.querySelector(`.guest-order-item[data-pin="${pin}"]`);
-            const statusMessageElement = orderItemElement ? orderItemElement.querySelector('.status-message') : null;
-
-            if (countdownElement && statusMessageElement && orderItemElement) {
-                countdownElement.innerText = `${seconds}s`;
-
-                // Update status message and class based on local elapsed time
-                if (elapsed >= totalDuration) {
-                    // Tour perdu (localement, en attendant la confirmation Firestore)
-                    statusMessageElement.innerText = 'Tour perdu !';
-                    statusMessageElement.classList.remove('ready', 'relance', 'pending', 'delivered', 'client-draft');
-                    statusMessageElement.classList.add('lost-turn');
-                    orderItemElement.classList.remove('status-ready', 'status-relance');
-                    orderItemElement.classList.add('status-lost-turn');
-                    stopCountdown(pin); // Stop the countdown
-                    playNotificationSound(); // Play sound for lost turn
-                } else if (elapsed >= firstRelanceThreshold) {
-                    // Relance (localement, en attendant la confirmation Firestore)
-                    if (!statusMessageElement.classList.contains('relance')) { // Only update if not already relance
-                        statusMessageElement.innerText = 'Dépêchez-vous !';
-                        statusMessageElement.classList.remove('ready', 'pending', 'delivered', 'lost-turn', 'client-draft');
-                        statusMessageElement.classList.add('relance');
-                        orderItemElement.classList.remove('status-ready');
-                        orderItemElement.classList.add('status-relance');
-                        playNotificationSound(); // Play sound for relance
-                    }
-                } else {
-                    // Still in 'ready' state (local)
-                    if (!statusMessageElement.classList.contains('ready')) { // Only update if not already ready
-                        statusMessageElement.innerText = 'PRÊT !';
-                        statusMessageElement.classList.remove('relance', 'pending', 'delivered', 'lost-turn', 'client-draft');
-                        statusMessageElement.classList.add('ready');
-                        orderItemElement.classList.remove('status-relance', 'status-lost-turn');
-                        orderItemElement.classList.add('status-ready');
-                    }
-                }
-            } else {
-                // Element not found, stop the interval to avoid memory leaks
-                stopCountdown(pin);
-            }
+        const newOrder = {
+            pin: newPin,
+            fcmToken: fcmToken || null,
+            status: "client_draft", // Nouveau statut : brouillon client
+            createdAt: new Date(),
+            cookingType: selectedCookingType,
+            // Ajoutez d'autres détails de commande si un menu plus complexe est implémenté
         };
 
-        // Call immediately to set initial state
-        updateCountdownAndStatus();
-        // Set interval for continuous updates
-        countdownIntervals[pin] = setInterval(updateCountdownAndStatus, 1000);
-    }
-
-    /**
-     * Arrête le compte à rebours pour une référence donnée.
-     * @param {string} pin - La référence de la commande.
-     */
-    function stopCountdown(pin) {
-        if (countdownIntervals[pin]) {
-            clearInterval(countdownIntervals[pin]);
-            delete countdownIntervals[pin];
-        }
-    }
-
-    // Rend la saisie du PIN en MAJUSQUES
-    if (guestPinInput) {
-        guestPinInput.addEventListener('input', (event) => {
-            event.target.value = event.target.value.toUpperCase();
-        });
-    }
-
-    /**
-     * Gère l'ajout d'une référence par le client.
-     */
-    addPinBtn.addEventListener('click', async () => {
-        const pin = guestPinInput.value.trim().toUpperCase();
-        pinErrorMessage.innerText = ''; // Efface les erreurs précédentes
-
-        if (pin.length !== 4) {
-            pinErrorMessage.innerText = 'La référence doit contenir 4 caractères.';
-            return;
-        }
-
-        if (guestPins.includes(pin)) {
-            pinErrorMessage.innerText = 'Cette référence est déjà suivie sur cet appareil.';
-            return;
-        }
-
-        // Vérifier si la référence existe dans Firestore
-        const q = query(collection(db, "orders"), where("pin", "==", pin), limit(1));
         try {
-            const querySnapshot = await getDocs(q);
-            if (querySnapshot.empty) {
-                pinErrorMessage.innerText = 'Référence non trouvée. Veuillez vérifier.';
-                return;
-            }
+            const docRef = await addDoc(collection(db, "orders"), newOrder);
+            console.log("Nouvelle commande brouillon enregistrée avec ID:", docRef.id, "et PIN:", newPin);
 
-            const docSnapshot = querySnapshot.docs[0];
-            const orderId = docSnapshot.id;
-
-            // Ajouter la référence à la liste locale et la sauvegarder
-            guestPins.push(pin);
+            // Ajoute le PIN à la liste locale et le sauvegarde
+            guestPins.push(newPin);
             localStorage.setItem(LOCAL_STORAGE_PINS_KEY, JSON.stringify(guestPins));
 
-            // Démarrer l'écoute pour cette nouvelle commande
-            startListeningToGuestOrder(orderId, pin);
+            // Démarre l'écoute pour cette nouvelle commande
+            startListeningToGuestOrder(docRef.id, newPin);
 
-            guestPinInput.value = ''; // Efface l'entrée
             renderGuestOrders(); // Met à jour l'affichage
-            requestNotificationPermissionAndGetToken(); // Demande les permissions si ce n'est pas déjà fait
         } catch (error) {
-            console.error("Erreur lors de la vérification de la référence :", error);
-            showConfirmationModal("Erreur lors de la vérification de la référence. Veuillez réessayer.", () => {}, () => { window.location.href = 'index.html'; });
+            console.error("Erreur lors de la création de la commande brouillon :", error);
+            // Modified: Add onCancelCallback to navigate to index.html
+            showConfirmationModal("Impossible d'ajouter la commande. Vérifiez votre connexion ou les règles Firestore.", () => {}, () => { window.location.href = 'index.html'; });
         }
     });
 
     /**
-     * Gère le nettoyage de toutes les références suivies par le client.
+     * Gère la modification d'une commande existante (en brouillon).
+     * Pour l'instant, cela permettrait de changer la cuisson.
+     * @param {string} pinToEdit - Le PIN de la commande à modifier.
      */
-    clearAllPinsBtn.addEventListener('click', () => {
-        if (guestPins.length === 0) {
-            showConfirmationModal("Aucune référence à nettoyer.", () => {});
+    function editGuestOrder(pinToEdit) {
+        const order = guestOrdersData[pinToEdit];
+        if (!order || order.status !== 'client_draft') {
+            showConfirmationModal("Cette commande ne peut pas être modifiée car elle n'est pas en brouillon.", () => {});
             return;
         }
 
-        showConfirmationModal("Voulez-vous vraiment effacer toutes les références de commande suivies sur cet appareil ?", () => {
-            // Désabonner toutes les écoutes Firestore
-            for (const orderId in unsubscribeGuestOrders) {
-                if (unsubscribeGuestOrders[orderId]) {
-                    unsubscribeGuestOrders[orderId]();
+        showConfirmationModal(`Modifier la cuisson pour le PIN ${pinToEdit} (actuel: ${order.cookingType}). Entrez BC, AP, S ou B:`, async () => {
+            const newCookingTypeInput = prompt(`Entrez le nouveau type de cuisson (BC, AP, S ou B) pour ${pinToEdit}:`);
+            if (newCookingTypeInput && ['BC', 'AP', 'S', 'B'].includes(newCookingTypeInput.toUpperCase())) {
+                const newCookingType = newCookingTypeInput.toUpperCase();
+                const orderId = order.id; // Utilise l'ID stocké dans guestOrdersData
+
+                if (orderId) {
+                    try {
+                        await updateDoc(doc(db, "orders", orderId), { cookingType: newCookingType });
+                        console.log(`Cuisson du PIN ${pinToEdit} mise à jour.`);
+                        // L'UI sera mise à jour via l'onSnapshot
+                    } catch (error) {
+                        console.error("Erreur mise à jour cuisson :", error);
+                        showConfirmationModal("Impossible de modifier la cuisson.", () => {});
+                    }
+                }
+            } else if (newCookingTypeInput !== null) { // Si l'utilisateur n'a pas annulé le prompt
+                showConfirmationModal("Type de cuisson invalide. Veuillez entrer BC, AP, S ou B.", () => {});
+            }
+        });
+    }
+
+
+    /**
+     * Gère la suppression d'une commande (en brouillon).
+     * @param {string} pinToDelete - Le PIN de la commande à supprimer.
+     */
+    function deleteGuestOrder(pinToDelete) {
+        const order = guestOrdersData[pinToDelete];
+        if (!order || order.status !== 'client_draft') {
+            showConfirmationModal("Cette commande ne peut pas être supprimée car elle n'est pas en brouillon.", () => {});
+            return;
+        }
+
+        showConfirmationModal(`Voulez-vous vraiment supprimer la commande ${pinToDelete} ?`, async () => {
+            const orderIdToDelete = order.id; // Utilise l'ID stocké dans guestOrdersData
+
+            if (orderIdToDelete) {
+                try {
+                    // Désabonner l'écoute Firestore avant de supprimer
+                    if (unsubscribeGuestOrders[orderIdToDelete]) {
+                        unsubscribeGuestOrders[orderIdToDelete]();
+                        delete unsubscribeGuestOrders[orderIdToDelete];
+                    }
+
+                    await deleteDoc(doc(db, "orders", orderIdToDelete));
+                    console.log(`Commande ${pinToDelete} supprimée de Firestore.`);
+
+                    // Supprimer le PIN de la liste locale
+                    guestPins = guestPins.filter(p => p !== pinToDelete);
+                    localStorage.setItem(LOCAL_STORAGE_PINS_KEY, JSON.stringify(guestPins));
+
+                    delete guestOrdersData[pinToDelete]; // Supprime les données de l'objet local
+
+                    renderGuestOrders(); // Met à jour l'affichage
+                } catch (error) {
+                    console.error("Erreur lors de la suppression de la commande :", error);
+                    showConfirmationModal("Impossible de supprimer la commande. Veuillez réessayer.", () => {});
                 }
             }
-            unsubscribeGuestOrders = {}; // Réinitialise l'objet
+        });
+    }
 
-            // Arrêter tous les comptes à rebours
-            for (const pin in countdownIntervals) {
-                stopCountdown(pin);
+    /**
+     * Valide une seule commande (passe de client_draft à pending).
+     * @param {string} pinToValidate - Le PIN de la commande à valider.
+     */
+    function validateSingleOrder(pinToValidate) {
+        const order = guestOrdersData[pinToValidate];
+        if (!order || order.status !== 'client_draft') {
+            showConfirmationModal("Cette commande ne peut pas être validée car elle n'est pas en brouillon.", () => {});
+            return;
+        }
+
+        showConfirmationModal(`Voulez-vous valider la commande ${pinToValidate} ? Elle sera envoyée à la buvette.`, async () => {
+            const orderIdToValidate = order.id; // Utilise l'ID stocké dans guestOrdersData
+            if (orderIdToValidate) {
+                try {
+                    await updateDoc(doc(db, "orders", orderIdToValidate), { status: "pending" });
+                    console.log(`Commande ${pinToValidate} validée et envoyée à la buvette.`);
+                    // L'UI sera mise à jour via l'onSnapshot
+                } catch (error) {
+                    console.error("Erreur lors de la validation de la commande :", error);
+                    showConfirmationModal("Impossible de valider la commande. Veuillez réessayer.", () => {});
+                }
             }
-            countdownIntervals = {}; // Réinitialise l'objet
+        });
+    }
 
-            guestPins = []; // Vide le tableau de références
-            guestOrdersData = {}; // Vide les données des commandes
-            localStorage.removeItem(LOCAL_STORAGE_PINS_KEY); // Supprime du localStorage
+    /**
+     * Valide toutes les commandes en brouillon.
+     */
+    validateAllOrdersBtn.addEventListener('click', () => {
+        const unvalidatedPins = guestPins.filter(pin => guestOrdersData[pin] && guestOrdersData[pin].status === 'client_draft');
 
-            renderGuestOrders(); // Met à jour l'affichage (devrait afficher "Aucune commande...")
-            console.log("Toutes les références de commande et données locales du Guest ont été nettoyées.");
+        if (unvalidatedPins.length === 0) {
+            showConfirmationModal("Aucune commande en brouillon à valider.", () => {});
+            return;
+        }
+
+        showConfirmationModal(`Voulez-vous valider toutes vos ${unvalidatedPins.length} commandes en brouillon ?`, async () => {
+            for (const pin of unvalidatedPins) {
+                const orderId = guestOrdersData[pin].id; // Utilise l'ID stocké dans guestOrdersData
+                if (orderId) {
+                    try {
+                        await updateDoc(doc(db, "orders", orderId), { status: "pending" });
+                        console.log(`Commande ${pin} validée.`);
+                    } catch (error) {
+                        console.error(`Erreur lors de la validation de la commande ${pin}:`, error);
+                        // Ne pas bloquer la boucle pour une seule erreur
+                    }
+                }
+            }
+            // L'UI sera mise à jour via les onSnapshot individuels
+        });
+    });
+
+    /**
+     * Annule toutes les commandes en brouillon.
+     */
+    cancelAllOrdersBtn.addEventListener('click', () => {
+        const unvalidatedPins = guestPins.filter(pin => guestOrdersData[pin] && guestOrdersData[pin].status === 'client_draft');
+
+        if (unvalidatedPins.length === 0) {
+            showConfirmationModal("Aucune commande en brouillon à annuler.", () => {});
+            return;
+        }
+
+        showConfirmationModal(`Voulez-vous annuler toutes vos ${unvalidatedPins.length} commandes en brouillon ?`, async () => {
+            for (const pin of unvalidatedPins) {
+                const orderId = guestOrdersData[pin].id; // Utilise l'ID stocké dans guestOrdersData
+                if (orderId) {
+                    try {
+                        // Désabonner l'écoute Firestore avant de supprimer
+                        if (unsubscribeGuestOrders[orderId]) {
+                            unsubscribeGuestOrders[orderId]();
+                            delete unsubscribeGuestOrders[orderId];
+                        }
+                        await deleteDoc(doc(db, "orders", orderId));
+                        console.log(`Commande ${pin} annulée et supprimée.`);
+                        // Supprimer le PIN de la liste locale
+                        guestPins = guestPins.filter(p => p !== pin);
+                    } catch (error) {
+                        console.error(`Erreur lors de l'annulation de la commande ${pin}:`, error);
+                        // Ne pas bloquer la boucle pour une seule erreur
+                    }
+                }
+            }
+            localStorage.setItem(LOCAL_STORAGE_PINS_KEY, JSON.stringify(guestPins));
+            guestOrdersData = {}; // Réinitialise les données locales
+            renderGuestOrders(); // Met à jour l'affichage
         });
     });
 
@@ -439,7 +488,7 @@ if (window.location.pathname.endsWith('guest.html')) {
     /**
      * Démarre l'écoute Firestore pour une commande spécifique du Guest.
      * @param {string} orderId - L'ID du document Firestore.
-     * @param {string} pin - La référence de la commande.
+     * @param {string} pin - Le PIN de la commande.
      */
     function startListeningToGuestOrder(orderId, pin) {
         // Si une écoute existe déjà pour cet ID, la désabonner d'abord
@@ -454,28 +503,28 @@ if (window.location.pathname.endsWith('guest.html')) {
                 renderGuestOrders(); // Re-rend la liste entière avec les données mises à jour
             } else {
                 // La commande a été supprimée de Firestore (par exemple, par le Manager ou une annulation)
-                console.log(`Commande avec référence ${pin} (${orderId}) n'existe plus dans Firestore.`);
-                guestPins = guestPins.filter(p => p !== pin); // Supprime la référence de la liste locale
+                console.log(`Commande ${pin} (${orderId}) n'existe plus dans Firestore.`);
+                guestPins = guestPins.filter(p => p !== pin); // Supprime le PIN de la liste locale
                 localStorage.setItem(LOCAL_STORAGE_PINS_KEY, JSON.stringify(guestPins));
                 delete guestOrdersData[pin]; // Supprime les données de l'objet local
-                stopCountdown(pin); // Arrête le compte à rebours associé
                 renderGuestOrders(); // Met à jour l'affichage
             }
         }, (error) => {
-            console.error(`Erreur lors de la recherche de la commande pour la référence ${pin}:`, error);
+            console.error(`Erreur lors de l'écoute de la commande ${pin} (${orderId}) :`, error);
+            // Modified: Add onCancelCallback to navigate to index.html
             showConfirmationModal("Erreur de connexion à une commande. Veuillez réessayer.", () => {}, () => { window.location.href = 'index.html'; });
         });
     }
 
     /**
-     * Initialise l'application Guest : charge les références stockées et démarre les écoutes Firestore.
+     * Initialise l'application Guest : charge les PINs stockés et démarre les écoutes Firestore.
      */
     async function initializeGuestApp() {
-        // Récupère les références stockées
+        // Récupère les PINs stockés
         const storedPins = JSON.parse(localStorage.getItem(LOCAL_STORAGE_PINS_KEY) || '[]');
-        guestPins = storedPins; // Met à jour la liste globale des références
+        guestPins = storedPins; // Met à jour la liste globale des PINs
 
-        // Pour chaque référence, démarre une écoute Firestore
+        // Pour chaque PIN, démarre une écoute Firestore
         // Utilise Promise.all pour attendre que toutes les requêtes soient terminées
         const promises = guestPins.map(async (pin) => {
             const q = query(collection(db, "orders"), where("pin", "==", pin), limit(1));
@@ -485,14 +534,14 @@ if (window.location.pathname.endsWith('guest.html')) {
                     const docSnapshot = querySnapshot.docs[0];
                     startListeningToGuestOrder(docSnapshot.id, pin);
                 } else {
-                    console.warn(`Référence ${pin} trouvée dans localStorage mais pas de commande correspondante dans Firestore. Suppression.`);
-                    return pin; // Retourne la référence pour la filtrer plus tard
+                    console.warn(`PIN ${pin} trouvé dans localStorage mais pas de commande correspondante dans Firestore. Suppression.`);
+                    return pin; // Retourne le PIN pour le filtrer plus tard
                 }
             } catch (error) {
-                console.error(`Erreur lors de la recherche de la commande pour la référence ${pin}:`, error);
-                return pin; // Retourne la référence pour le filtrer en cas d'erreur
+                console.error(`Erreur lors de la recherche de la commande pour le PIN ${pin}:`, error);
+                return pin; // Retourne le PIN pour le filtrer en cas d'erreur
             }
-            return null; // Pas d'erreur, pas de référence à filtrer
+            return null; // Pas d'erreur, pas de PIN à filtrer
         });
 
         const pinsToRemove = (await Promise.all(promises)).filter(p => p !== null);
@@ -511,14 +560,6 @@ if (window.location.pathname.endsWith('guest.html')) {
 
 // --- Logique du module MANAGER ---
 if (window.location.pathname.endsWith('manager.html')) {
-    const createOrderSection = document.getElementById('create-order-section');
-    const newPinDisplay = document.getElementById('new-pin-display');
-    const generatePinBtn = document.getElementById('generate-pin-btn');
-    const cookingTypeRadios = document.querySelectorAll('input[name="cookingType"]');
-    const createOrderBtn = document.getElementById('create-order-btn');
-    const managerOrderCreationMessage = document.getElementById('manager-order-creation-message');
-
-
     const authSection = document.getElementById('auth-section');
     const managerDashboard = document.getElementById('manager-dashboard');
     const managerPinInput = document.getElementById('manager-pin-input');
@@ -526,6 +567,15 @@ if (window.location.pathname.endsWith('manager.html')) {
     const authErrorMessage = document.getElementById('auth-error-message');
     const ordersList = document.getElementById('orders-list');
     const pinSearchInput = document.getElementById('pin-search-input');
+
+    // Nouveaux éléments DOM pour la création de commande
+    const createOrderSection = document.getElementById('create-order-section');
+    const newPinDisplay = document.getElementById('new-pin-display');
+    const generatePinBtn = document.getElementById('generate-pin-btn');
+    const clientNameInput = document.getElementById('client-name-input'); // Nouveau champ pour le nom du client
+    const cookingTypeRadios = document.querySelectorAll('input[name="cookingType"]');
+    const createOrderBtn = document.getElementById('create-order-btn');
+    const managerOrderCreationMessage = document.getElementById('manager-order-creation-message');
 
     // MODAL ELEMENTS (références globales, mais ajoutées ici pour clarté dans le module Manager)
     const confirmationModal = document.getElementById('confirmation-modal');
@@ -601,7 +651,6 @@ if (window.location.pathname.endsWith('manager.html')) {
     let allOrders = []; // Nouvelle variable pour stocker toutes les commandes récupérées
 
     // Map to store current UI state of cooking type and status for each order being edited
-    // This allows tracking changes before validation
     // Key: order.id, Value: { originalCookingType: 'AP', originalStatus: 'pending', currentCookingType: 'AP', currentStatus: 'pending' }
     const orderEditState = new Map();
 
@@ -613,7 +662,7 @@ if (window.location.pathname.endsWith('manager.html')) {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
             managerPin = docSnap.data().pin;
-            console.log("Manager PIN loaded from Firestore:", managerPin); // Debug log
+            console.log("Manager PIN chargé depuis Firestore:", managerPin); // Debug log
         } else {
             // Créer le document avec la Référence par défaut si non trouvé
             await setDoc(docRef, { pin: MANAGER_DEFAULT_PIN });
@@ -678,21 +727,25 @@ if (window.location.pathname.endsWith('manager.html')) {
             return;
         }
 
+        const clientName = clientNameInput.value.trim(); // Récupérer le nom du client
+
         const newOrder = {
             pin: currentGeneratedPin,
             fcmToken: null, // Le client ajoutera son token lors de la connexion
             status: "pending", // La commande est directement "en préparation"
             createdAt: new Date(),
             cookingType: selectedCookingType.value,
+            clientName: clientName === '' ? 'N/A' : clientName, // Ajouter le nom du client
             // Ajoutez d'autres détails de commande si un menu plus complexe est implémenté
         };
 
         try {
             await addDoc(collection(db, "orders"), newOrder);
-            managerOrderCreationMessage.innerText = `Commande avec référence ${currentGeneratedPin} créée avec succès !`;
-            console.log("Nouvelle commande Manager enregistrée avec référence:", currentGeneratedPin);
+            managerOrderCreationMessage.innerText = `Commande avec référence ${currentGeneratedPin} pour ${clientName || 'N/A'} créée avec succès !`;
+            console.log("Nouvelle commande Manager enregistrée avec référence:", currentGeneratedPin, "et client:", clientName);
             currentGeneratedPin = null; // Réinitialiser la référence générée
             newPinDisplay.innerText = 'Générez une référence';
+            clientNameInput.value = ''; // Réinitialiser le champ nom client
             createOrderBtn.disabled = true; // Désactiver le bouton de création
             // L'UI sera mise à jour via l'onSnapshot du manager dashboard
         } catch (error) {
@@ -761,7 +814,7 @@ if (window.location.pathname.endsWith('manager.html')) {
             // Fallback: re-initialize edit state
             const order = allOrders.find(o => o.id === orderId);
             if (order) {
-                orderEditState.set(orderId, {
+                orderEditState.set(order.id, {
                     originalCookingType: order.cookingType,
                     originalStatus: order.status,
                     currentCookingType: selectedCookingType, // Use newly selected
@@ -786,7 +839,7 @@ if (window.location.pathname.endsWith('manager.html')) {
             // Fallback: re-initialize edit state
             const order = allOrders.find(o => o.id === orderId);
             if (order) {
-                orderEditState.set(orderId, {
+                orderEditState.set(order.id, {
                     originalCookingType: order.cookingType,
                     originalStatus: order.status,
                     currentCookingType: order.cookingType, // Keep original cooking type
@@ -934,6 +987,13 @@ if (window.location.pathname.endsWith('manager.html')) {
 
             // Retrier les commandes actives par createdAt pour s'assurer que les plus anciennes sont en haut
             activeOrders.sort((a, b) => {
+                const statusOrder = { 'client_draft': 1, 'pending': 2, 'ready': 3, 'relance': 4 };
+                const statusA = statusOrder[a.status] || 99;
+                const statusB = statusOrder[b.status] || 99;
+
+                if (statusA !== statusB) {
+                    return statusA - statusB;
+                }
                 const aTime = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate().getTime() : a.createdAt) : 0;
                 const bTime = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate().getTime() : b.createdAt) : 0;
                 return aTime - bTime;
@@ -958,11 +1018,14 @@ if (window.location.pathname.endsWith('manager.html')) {
         ordersList.innerHTML = ''; // Nettoyer la liste
 
         const filteredOrders = searchTerm
-            ? ordersToRender.filter(order => order.pin && order.pin.includes(searchTerm)) // Ajout de order.pin pour s'assurer qu'il existe
+            ? ordersToRender.filter(order =>
+                (order.pin && order.pin.includes(searchTerm)) ||
+                (order.clientName && order.clientName.toUpperCase().includes(searchTerm)) // Nouvelle condition de recherche
+              )
             : ordersToRender;
 
         if (filteredOrders.length === 0 && searchTerm) {
-            ordersList.innerHTML = `<p>Aucune référence '${searchTerm}' trouvée.</p>`;
+            ordersList.innerHTML = `<p>Aucune commande trouvée pour '${searchTerm}'.</p>`;
             return;
         } else if (filteredOrders.length === 0 && !searchTerm) {
             ordersList.innerHTML = '<p>Aucune commande en cours.</p>';
@@ -1039,9 +1102,12 @@ if (window.location.pathname.endsWith('manager.html')) {
                 displayStatusText = 'Tour Perdu';
             }
 
-            // Contenu de la ligne : Référence + Pastilles de cuisson + Radio boutons de statut + Boutons d'action
+            // Contenu de la ligne : Référence + Nom Client + Pastilles de cuisson + Radio boutons de statut + Boutons d'action
             orderItem.innerHTML = `
-                <span class="pin">${order.pin}</span>
+                <div class="order-info">
+                    <span class="pin">${order.pin}</span>
+                    <span class="client-name">${order.clientName || 'N/A'}</span>
+                </div>
                 <div class="cooking-pastilles-container">
                     ${cookingPastillesHtml}
                 </div>
