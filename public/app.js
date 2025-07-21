@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, orderBy, limit, getDoc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, orderBy, limit, getDoc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-messaging.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-messaging.js";
 import { firebaseConfig } from './firebase-config.js'; // Chemin corrigé si firebase-config.js est dans le dossier public
 
@@ -270,6 +270,7 @@ if (window.location.pathname.endsWith('guest.html')) {
 
     /**
      * Démarre le compte à rebours pour une commande spécifique.
+     * Met à jour le temps restant et ajuste le message/style du statut localement.
      * @param {string} pin - La référence de la commande.
      * @param {object} readyTimestamp - Le timestamp Firestore (ou ms) quand la commande est devenue prête.
      */
@@ -281,25 +282,61 @@ if (window.location.pathname.endsWith('guest.html')) {
 
         const startTime = readyTimestamp.toMillis ? readyTimestamp.toMillis() : readyTimestamp; // Gère les timestamps Firebase
 
-        countdownIntervals[pin] = setInterval(() => {
+        const updateCountdownAndStatus = () => {
             const now = Date.now();
             const elapsed = now - startTime;
-            const remaining = Math.max(0, (RELANCE_INTERVAL_MS * MAX_RELANCES) - elapsed);
+            const totalDuration = RELANCE_INTERVAL_MS * MAX_RELANCES; // 90 seconds
+            const firstRelanceThreshold = RELANCE_INTERVAL_MS; // 30 seconds
+            const remaining = Math.max(0, totalDuration - elapsed);
 
             const seconds = Math.floor(remaining / 1000);
             const countdownElement = document.getElementById(`countdown-${pin}`);
+            const orderItemElement = guestOrdersList.querySelector(`.guest-order-item[data-pin="${pin}"]`);
+            const statusMessageElement = orderItemElement ? orderItemElement.querySelector('.status-message') : null;
 
-            if (countdownElement) {
+            if (countdownElement && statusMessageElement && orderItemElement) {
                 countdownElement.innerText = `${seconds}s`;
-                if (seconds <= 0) {
-                    stopCountdown(pin);
-                    // La fonction Cloud gérera le changement de statut vers 'lost_turn'
+
+                // Update status message and class based on local elapsed time
+                if (elapsed >= totalDuration) {
+                    // Tour perdu (localement, en attendant la confirmation Firestore)
+                    statusMessageElement.innerText = 'Tour perdu !';
+                    statusMessageElement.classList.remove('ready', 'relance', 'pending', 'delivered', 'client-draft');
+                    statusMessageElement.classList.add('lost-turn');
+                    orderItemElement.classList.remove('status-ready', 'status-relance');
+                    orderItemElement.classList.add('status-lost-turn');
+                    stopCountdown(pin); // Stop the countdown
+                    playNotificationSound(); // Play sound for lost turn
+                } else if (elapsed >= firstRelanceThreshold) {
+                    // Relance (localement, en attendant la confirmation Firestore)
+                    if (!statusMessageElement.classList.contains('relance')) { // Only update if not already relance
+                        statusMessageElement.innerText = 'Dépêchez-vous !';
+                        statusMessageElement.classList.remove('ready', 'pending', 'delivered', 'lost-turn', 'client-draft');
+                        statusMessageElement.classList.add('relance');
+                        orderItemElement.classList.remove('status-ready');
+                        orderItemElement.classList.add('status-relance');
+                        playNotificationSound(); // Play sound for relance
+                    }
+                } else {
+                    // Still in 'ready' state (local)
+                    if (!statusMessageElement.classList.contains('ready')) { // Only update if not already ready
+                        statusMessageElement.innerText = 'PRÊT !';
+                        statusMessageElement.classList.remove('relance', 'pending', 'delivered', 'lost-turn', 'client-draft');
+                        statusMessageElement.classList.add('ready');
+                        orderItemElement.classList.remove('status-relance', 'status-lost-turn');
+                        orderItemElement.classList.add('status-ready');
+                    }
                 }
             } else {
-                // Élément non trouvé, arrête l'intervalle pour éviter les fuites de mémoire
+                // Element not found, stop the interval to avoid memory leaks
                 stopCountdown(pin);
             }
-        }, 1000);
+        };
+
+        // Call immediately to set initial state
+        updateCountdownAndStatus();
+        // Set interval for continuous updates
+        countdownIntervals[pin] = setInterval(updateCountdownAndStatus, 1000);
     }
 
     /**
