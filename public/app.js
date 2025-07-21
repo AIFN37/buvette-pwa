@@ -93,11 +93,15 @@ if (window.location.pathname.endsWith('guest.html')) {
     const validateAllOrdersBtn = document.getElementById('validate-all-orders-btn');
     const cancelAllOrdersBtn = document.getElementById('cancel-all-orders-btn');
 
-    // MODAL ELEMENTS - Declare them with 'let' so they can be reassigned
-    let confirmationModal = document.getElementById('confirmation-modal');
-    let modalMessage = document.getElementById('modal-message');
-    let modalConfirmBtn = document.getElementById('modal-confirm-btn');
-    let modalCancelBtn = document.getElementById('modal-cancel-btn');
+    // MODAL ELEMENTS
+    const confirmationModal = document.getElementById('confirmation-modal');
+    const modalMessage = document.getElementById('modal-message');
+    const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+
+    // Variables pour stocker les callbacks actuels de la modale
+    let currentOnConfirmCallback = null;
+    let currentOnCancelCallback = null;
 
     let guestPins = []; // Tableau pour stocker les PINs du client
     let guestOrdersData = {}; // Objet pour stocker les données complètes des commandes par PIN
@@ -112,6 +116,50 @@ if (window.location.pathname.endsWith('guest.html')) {
     };
 
     /**
+     * Gère le clic sur le bouton Confirmer de la modale.
+     */
+    function handleConfirmClick() {
+        console.log("handleConfirmClick triggered."); // Debug log
+        confirmationModal.style.display = 'none';
+        if (currentOnConfirmCallback) {
+            currentOnConfirmCallback();
+        }
+        removeModalListeners();
+    }
+
+    /**
+     * Gère le clic sur le bouton Annuler de la modale.
+     */
+    function handleCancelClick() {
+        console.log("handleCancelClick triggered."); // Debug log
+        confirmationModal.style.display = 'none';
+        if (currentOnCancelCallback) {
+            currentOnCancelCallback();
+        }
+        removeModalListeners();
+    }
+
+    /**
+     * Attache les écouteurs d'événements à la modale.
+     */
+    function addModalListeners() {
+        console.log("Adding modal listeners."); // Debug log
+        modalConfirmBtn.addEventListener('click', handleConfirmClick);
+        modalCancelBtn.addEventListener('click', handleCancelClick);
+    }
+
+    /**
+     * Retire les écouteurs d'événements de la modale.
+     */
+    function removeModalListeners() {
+        console.log("Removing modal listeners."); // Debug log
+        modalConfirmBtn.removeEventListener('click', handleConfirmClick);
+        modalCancelBtn.removeEventListener('click', handleCancelClick);
+        currentOnConfirmCallback = null;
+        currentOnCancelCallback = null;
+    }
+
+    /**
      * Affiche la modale de confirmation et gère les actions.
      * @param {string} message - Le message à afficher dans la modale.
      * @param {Function} onConfirmCallback - La fonction à exécuter si l'utilisateur confirme.
@@ -123,31 +171,13 @@ if (window.location.pathname.endsWith('guest.html')) {
 
         console.log("Modal affichée. Attente d'interaction..."); // Debug log
 
-        // Clone and replace the buttons to effectively remove old event listeners
-        // IMPORTANT: Reassign the global variables to the new cloned nodes
-        const oldModalConfirmBtn = modalConfirmBtn;
-        const oldModalCancelBtn = modalCancelBtn;
+        // Stocke les callbacks pour les gestionnaires globaux
+        currentOnConfirmCallback = onConfirmCallback;
+        currentOnCancelCallback = onCancelCallback;
 
-        modalConfirmBtn = oldModalConfirmBtn.cloneNode(true);
-        oldModalConfirmBtn.parentNode.replaceChild(modalConfirmBtn, oldModalConfirmBtn);
-
-        modalCancelBtn = oldModalCancelBtn.cloneNode(true);
-        oldModalCancelBtn.parentNode.replaceChild(modalCancelBtn, oldModalCancelBtn);
-
-        // Attache les nouveaux écouteurs aux NOUVELLES références des boutons
-        modalConfirmBtn.addEventListener('click', () => {
-            console.log("Bouton Confirmer cliqué."); // Debug log
-            confirmationModal.style.display = 'none';
-            onConfirmCallback();
-        });
-        console.log("Confirm button listener attached."); // Debug log
-
-        modalCancelBtn.addEventListener('click', () => {
-            console.log("Bouton Annuler cliqué."); // Debug log
-            confirmationModal.style.display = 'none';
-            onCancelCallback(); // Exécute le callback d'annulation si fourni
-        });
-        console.log("Cancel button listener attached."); // Debug log
+        // Assurez-vous que les écouteurs sont attachés une seule fois ou réinitialisés
+        removeModalListeners(); // Retire les anciens pour être sûr
+        addModalListeners();    // Attache les nouveaux
     }
 
 
