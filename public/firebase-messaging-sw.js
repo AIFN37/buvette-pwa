@@ -7,59 +7,63 @@
 importScripts('https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.4.0/firebase-messaging-compat.js');
 
-// La configuration Firebase doit être disponible globalement pour le Service Worker.
-// Nous allons la récupérer via un importScripts de firebase-config.js
-// Assurez-vous que firebase-config.js ne contient que l'objet 'firebaseConfig' et PAS de 'export'.
-importScripts('./firebase-config.js'); // Le chemin est relatif au Service Worker (dans le même dossier 'public')
+// Pour importer la configuration depuis firebase-config.js qui utilise 'export',
+// nous devons utiliser une approche différente dans le Service Worker.
+// Nous allons faire une requête fetch pour charger le contenu du fichier
+// et l'évaluer dans le contexte du Service Worker.
+// C'est une solution de contournement pour les limitations d'import de modules ES dans les Service Workers.
+fetch('./firebase-config.js')
+    .then(response => response.text())
+    .then(text => {
+        // Évalue le texte du fichier pour rendre firebaseConfig disponible globalement
+        // Cela est sûr car nous contrôlons le contenu de firebase-config.js
+        eval(text);
 
-// Initialisez l'application Firebase dans le Service Worker.
-// L'objet 'firebaseConfig' est maintenant disponible globalement grâce à l'importScripts ci-dessus.
-self.firebase.initializeApp(firebaseConfig);
+        // Initialisez l'application Firebase APRÈS que firebaseConfig soit disponible.
+        self.firebase.initializeApp(firebaseConfig);
 
-// Récupérez l'instance de Messaging.
-const messaging = self.firebase.messaging();
+        // Récupérez l'instance de Messaging.
+        const messaging = self.firebase.messaging();
 
-// Gérer les messages en arrière-plan (quand l'app n'est pas ouverte/en focus).
-messaging.onBackgroundMessage((payload) => {
-    console.log('[firebase-messaging-sw.js] Message d\'arrière-plan reçu :', payload);
+        // Gérer les messages en arrière-plan (quand l'app n'est pas ouverte/en focus).
+        messaging.onBackgroundMessage((payload) => {
+            console.log('[firebase-messaging-sw.js] Message d\'arrière-plan reçu :', payload);
 
-    // Personnalisez ici l'affichage de la notification
-    const notificationTitle = payload.notification.title;
-    const notificationOptions = {
-        body: payload.notification.body,
-        icon: '/images/icon-192x192.png', // Chemin vers l'icône de votre PWA
-        data: payload.data // Inclure les données pour pouvoir les utiliser au clic
-    };
+            const notificationTitle = payload.notification.title;
+            const notificationOptions = {
+                body: payload.notification.body,
+                icon: '/images/icon-192x192.png',
+                data: payload.data
+            };
 
-    // Affichez la notification.
-    self.registration.showNotification(notificationTitle, notificationOptions);
+            self.registration.showNotification(notificationTitle, notificationOptions);
+        });
 
-    // Note : Jouer une sonnerie directement depuis le Service Worker pour les notifications
-    // en arrière-plan est très limité et dépend du système d'exploitation et du navigateur.
-    // La plupart du temps, le système gère sa propre sonnerie par défaut pour les notifications.
-});
+        // Gérer le clic sur la notification
+        self.addEventListener('notificationclick', (event) => {
+            event.notification.close();
 
-// Optionnel : Gérer le clic sur la notification
-self.addEventListener('notificationclick', (event) => {
-    event.notification.close(); // Ferme la notification
+            const data = event.notification.data;
+            const urlToOpen = new URL('/guest.html', self.location.origin).href;
 
-    const data = event.notification.data; // Récupère les données passées avec la notification
+            event.waitUntil(
+                clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+                    for (let i = 0; i < clientList.length; i++) {
+                        const client = clientList[i];
+                        if (client.url.includes(urlToOpen) && 'focus' in client) {
+                            return client.focus();
+                        }
+                    }
+                    if (clients.openWindow) {
+                        return clients.openWindow(urlToOpen);
+                    }
+                    return null;
+                })
+            );
+        });
 
-    // Ouvrir la PWA sur la page du Guest avec le PIN spécifique
-    const urlToOpen = new URL('/guest.html', self.location.origin).href;
+    })
+    .catch(error => {
+        console.error('Erreur lors du chargement ou de l\'évaluation de firebase-config.js dans le Service Worker:', error);
+    });
 
-    event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-            for (let i = 0; i < clientList.length; i++) {
-                const client = clientList[i];
-                if (client.url.includes(urlToOpen) && 'focus' in client) {
-                    return client.focus();
-                }
-            }
-            if (clients.openWindow) {
-                return clients.openWindow(urlToOpen);
-            }
-            return null;
-        })
-    );
-});
