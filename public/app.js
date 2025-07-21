@@ -490,7 +490,7 @@ if (window.location.pathname.endsWith('guest.html')) {
                 }
             } catch (error) {
                 console.error(`Erreur lors de la recherche de la commande pour la référence ${pin}:`, error);
-                return pin; // Retourne la référence pour la filtrer en cas d'erreur
+                return pin; // Retourne la référence pour le filtrer en cas d'erreur
             }
             return null; // Pas d'erreur, pas de référence à filtrer
         });
@@ -602,7 +602,8 @@ if (window.location.pathname.endsWith('manager.html')) {
 
     // Map to store current UI state of cooking type and status for each order being edited
     // This allows tracking changes before validation
-    const orderEditState = new Map(); // Key: order.id, Value: { cookingType: 'AP', status: 'pending' }
+    // Key: order.id, Value: { originalCookingType: 'AP', originalStatus: 'pending', currentCookingType: 'AP', currentStatus: 'pending' }
+    const orderEditState = new Map();
 
     /**
      * Charge la Référence Manager depuis Firestore ou la crée s'il n'existe pas.
@@ -702,7 +703,7 @@ if (window.location.pathname.endsWith('manager.html')) {
 
     /**
      * Met à jour l'état visuel et fonctionnel du bouton "Valider" et "Annuler" pour une commande.
-     * Le bouton est actif si des modifications sont détectées par rapport à l'état initial.
+     * Le bouton est actif si des modifications sont détectées par rapport à l'état initial stocké dans orderEditState.
      * @param {string} orderId - L'ID de la commande.
      */
     function checkAndToggleValidateButton(orderId) {
@@ -710,23 +711,21 @@ if (window.location.pathname.endsWith('manager.html')) {
         if (!orderItemElement) return;
 
         const validateBtn = orderItemElement.querySelector('.validate-order-btn');
-        const cancelBtn = orderItemElement.querySelector('.cancel-changes-btn'); // Nouveau bouton Annuler
+        const cancelBtn = orderItemElement.querySelector('.cancel-changes-btn');
 
-        const originalCookingType = orderItemElement.dataset.originalCookingType;
-        const originalStatus = orderItemElement.dataset.originalStatus;
+        const editState = orderEditState.get(orderId);
+        if (!editState) {
+            // No edit state means no changes, disable buttons
+            validateBtn.disabled = true;
+            cancelBtn.disabled = true;
+            return;
+        }
 
-        // Get current selected cooking type from pastilles
-        const selectedPastille = orderItemElement.querySelector('.cooking-pastille.selected');
-        const currentCookingType = selectedPastille ? selectedPastille.dataset.cookingType : originalCookingType; // Fallback to original if none selected (shouldn't happen)
-
-        // Get current selected status from radio buttons
-        const selectedStatusRadio = orderItemElement.querySelector(`input[name="status-${orderId}"]:checked`);
-        const currentStatus = selectedStatusRadio ? selectedStatusRadio.value : originalStatus; // Fallback to original
-
-        const hasChanges = (currentCookingType !== originalCookingType) || (currentStatus !== originalStatus);
+        const hasChanges = (editState.currentCookingType !== editState.originalCookingType) ||
+                           (editState.currentStatus !== editState.originalStatus);
 
         validateBtn.disabled = !hasChanges;
-        cancelBtn.disabled = !hasChanges; // Annuler est actif si des modifs sont là
+        cancelBtn.disabled = !hasChanges;
     }
 
     /**
@@ -753,10 +752,23 @@ if (window.location.pathname.endsWith('manager.html')) {
         clickedPastille.appendChild(checkIcon);
 
         // Update the temporary state for this order
-        orderEditState.set(orderId, {
-            ...orderEditState.get(orderId), // Keep existing status if set
-            cookingType: selectedCookingType
-        });
+        const currentEditState = orderEditState.get(orderId);
+        if (currentEditState) {
+            currentEditState.currentCookingType = selectedCookingType;
+        } else {
+            // Should not happen if orderEditState is properly initialized in renderOrdersList
+            console.warn(`No edit state found for order ${orderId} during cooking type selection.`);
+            // Fallback: re-initialize edit state
+            const order = allOrders.find(o => o.id === orderId);
+            if (order) {
+                orderEditState.set(orderId, {
+                    originalCookingType: order.cookingType,
+                    originalStatus: order.status,
+                    currentCookingType: selectedCookingType, // Use newly selected
+                    currentStatus: order.status // Keep original status
+                });
+            }
+        }
 
         checkAndToggleValidateButton(orderId);
     }
@@ -767,10 +779,21 @@ if (window.location.pathname.endsWith('manager.html')) {
      * @param {string} selectedStatus - Le statut sélectionné.
      */
     function handleStatusChange(orderId, selectedStatus) {
-        orderEditState.set(orderId, {
-            ...orderEditState.get(orderId), // Keep existing cookingType if set
-            status: selectedStatus
-        });
+        const currentEditState = orderEditState.get(orderId);
+        if (currentEditState) {
+            currentEditState.currentStatus = selectedStatus;
+        } else {
+            // Fallback: re-initialize edit state
+            const order = allOrders.find(o => o.id === orderId);
+            if (order) {
+                orderEditState.set(orderId, {
+                    originalCookingType: order.cookingType,
+                    originalStatus: order.status,
+                    currentCookingType: order.cookingType, // Keep original cooking type
+                    currentStatus: selectedStatus // Use newly selected
+                });
+            }
+        }
         checkAndToggleValidateButton(orderId);
     }
 
@@ -779,37 +802,31 @@ if (window.location.pathname.endsWith('manager.html')) {
      * Revertit l'UI à l'état initial et désactive les boutons de validation/annulation.
      * @param {string} orderId - L'ID de la commande.
      */
-    async function cancelChanges(orderId) {
+    function cancelChanges(orderId) {
         const orderItemElement = document.querySelector(`.order-item[data-id="${orderId}"]`);
         if (!orderItemElement) return;
 
-        const originalCookingType = orderItemElement.dataset.originalCookingType;
-        const originalStatus = orderItemElement.dataset.originalStatus;
+        const editState = orderEditState.get(orderId);
+        if (!editState) return; // Nothing to cancel
 
-        // Revert cooking type selection
-        orderItemElement.querySelectorAll('.cooking-pastille').forEach(pastille => {
-            pastille.classList.remove('selected');
-            const checkIcon = pastille.querySelector('.fa-check');
-            if (checkIcon) checkIcon.remove();
-            if (pastille.dataset.cookingType === originalCookingType) {
-                pastille.classList.add('selected');
-                const newCheckIcon = document.createElement('i');
-                newCheckIcon.classList.add('fas', 'fa-check');
-                pastille.appendChild(newCheckIcon);
-            }
-        });
+        // Revert current state to original state in the map
+        editState.currentCookingType = editState.originalCookingType;
+        editState.currentStatus = editState.originalStatus;
 
-        // Revert status radio button selection
-        const originalRadio = orderItemElement.querySelector(`input[name="status-${orderId}"][value="${originalStatus}"]`);
-        if (originalRadio) {
-            originalRadio.checked = true;
+        // Re-render this specific order item to reflect the reverted state
+        // This is a bit of a hack as it re-renders only one item, but it's simpler than re-rendering the whole list.
+        // A full re-render (calling renderOrdersList) would also work but might be less performant for single item changes.
+        const order = allOrders.find(o => o.id === orderId);
+        if (order) {
+            // Temporarily remove the item, then re-add it with updated display
+            const parent = orderItemElement.parentNode;
+            parent.removeChild(orderItemElement);
+            // Re-add it by calling renderOrdersList with just this order, or rebuild its HTML directly
+            // For simplicity and consistency with onSnapshot, let's just trigger a full re-render
+            // This will ensure all buttons are correctly re-evaluated.
+            renderOrdersList(allOrders, pinSearchInput.value.trim().toUpperCase());
         }
-
-        // Clear the edit state for this order
-        orderEditState.delete(orderId);
-
-        // Disable validate and cancel buttons
-        checkAndToggleValidateButton(orderId);
+        // The checkAndToggleValidateButton will be called during renderOrdersList, disabling the buttons
     }
 
     /**
@@ -821,20 +838,21 @@ if (window.location.pathname.endsWith('manager.html')) {
         const orderItemElement = document.querySelector(`.order-item[data-id="${orderId}"]`);
         if (!orderItemElement) {
             console.error(`Order item element not found for ID: ${orderId}`);
-            alert("Erreur: Élément de commande non trouvé. Impossible de valider.");
+            showManagerConfirmationModal("Erreur: Élément de commande non trouvé. Impossible de valider.", () => {});
             return;
         }
 
-        // Get selected cooking type from pastilles
-        const selectedPastille = orderItemElement.querySelector('.cooking-pastille.selected');
-        const newCookingType = selectedPastille ? selectedPastille.dataset.cookingType : null;
+        const editState = orderEditState.get(orderId);
+        if (!editState) {
+            showManagerConfirmationModal("Aucune modification détectée pour cette commande.", () => {});
+            return;
+        }
 
-        // Get selected status from radio buttons
-        const selectedStatusRadio = orderItemElement.querySelector(`input[name="status-${orderId}"]:checked`);
-        const newStatus = selectedStatusRadio ? selectedStatusRadio.value : null;
+        const newCookingType = editState.currentCookingType;
+        const newStatus = editState.currentStatus;
 
         if (!newCookingType || !newStatus) {
-            alert("Veuillez sélectionner un type de cuisson et un statut pour la commande avant de valider.");
+            showManagerConfirmationModal("Veuillez sélectionner un type de cuisson et un statut pour la commande avant de valider.", () => {});
             return;
         }
 
@@ -858,11 +876,9 @@ if (window.location.pathname.endsWith('manager.html')) {
         try {
             await updateDoc(orderRef, updateData);
             console.log(`Commande ${orderId} mise à jour (Cuisson: ${newCookingType}, Statut: ${newStatus}).`);
-            // Update original data attributes on the DOM element
-            orderItemElement.dataset.originalCookingType = newCookingType;
-            orderItemElement.dataset.originalStatus = newStatus;
             orderEditState.delete(orderId); // Clear edit state after successful save
-            checkAndToggleValidateButton(orderId); // This will disable the buttons
+            // The onSnapshot listener will trigger renderOrdersList, which will then disable the buttons
+            // as the Firestore data now matches the "original" state.
         } catch (error) {
             console.error("Erreur lors de la validation de la commande :", error);
             showManagerConfirmationModal("Erreur lors de la validation de la commande. Veuillez réessayer.", () => {});
@@ -878,6 +894,7 @@ if (window.location.pathname.endsWith('manager.html')) {
             try {
                 await deleteDoc(doc(db, "orders", orderId));
                 console.log(`Commande ${orderId} supprimée.`);
+                orderEditState.delete(orderId); // Remove from edit state if deleted
                 // L'UI sera mise à jour via l'onSnapshot
             } catch (error) {
                 console.error("Erreur lors de la suppression de la commande :", error);
@@ -955,9 +972,32 @@ if (window.location.pathname.endsWith('manager.html')) {
         filteredOrders.forEach(order => {
             const orderItem = document.createElement('div');
             orderItem.classList.add('order-item');
-            orderItem.dataset.id = order.id; // Pour référence facile au document Firestore
-            orderItem.dataset.originalCookingType = order.cookingType; // Store original for comparison
-            orderItem.dataset.originalStatus = order.status; // Store original for comparison
+            orderItem.dataset.id = order.id;
+
+            // Initialize or update orderEditState for this order
+            let editState = orderEditState.get(order.id);
+            if (!editState) {
+                // If this order is new to our local edit state, initialize it with Firestore's current values
+                editState = {
+                    originalCookingType: order.cookingType,
+                    originalStatus: order.status,
+                    currentCookingType: order.cookingType,
+                    currentStatus: order.status
+                };
+                orderEditState.set(order.id, editState);
+            } else {
+                // If the Firestore data for this order has changed (e.g., from another manager or cloud function)
+                // and it's different from our current local edits, then we should reset our local edits
+                // to match the new Firestore data.
+                if (editState.currentCookingType !== order.cookingType || editState.currentStatus !== order.status) {
+                    editState.originalCookingType = order.cookingType;
+                    editState.originalStatus = order.status;
+                    editState.currentCookingType = order.cookingType;
+                    editState.currentStatus = order.status;
+                    // We don't delete from orderEditState here, just sync it.
+                }
+            }
+
 
             // Appliquer la classe de statut pour la couleur de fond
             let statusClass = '';
@@ -976,11 +1016,11 @@ if (window.location.pathname.endsWith('manager.html')) {
             }
             orderItem.classList.add(statusClass);
 
-            // Générer les pastilles de cuisson
+            // Générer les pastilles de cuisson en utilisant l'état actuel de modification
             let cookingPastillesHtml = '';
             for (const key in cookingTypesColors) {
                 const cookingInfo = cookingTypesColors[key];
-                const isSelected = order.cookingType === key;
+                const isSelected = editState.currentCookingType === key; // Use current edited cooking type
                 cookingPastillesHtml += `
                     <span class="cooking-pastille ${isSelected ? 'selected' : ''}"
                           style="background-color: ${cookingInfo.color};"
@@ -1007,10 +1047,10 @@ if (window.location.pathname.endsWith('manager.html')) {
                 </div>
                 <div class="status-controls">
                     ${order.status === 'client_draft' ? `<span class="status-message ${statusClass}">${displayStatusText}</span>` : `
-                        <label><input type="radio" name="status-${order.id}" value="pending" ${order.status === 'pending' ? 'checked' : ''}> En préparation</label>
-                        <label><input type="radio" name="status-${order.id}" value="ready" ${order.status === 'ready' ? 'checked' : ''}> Prêt</label>
-                        <label><input type="radio" name="status-${order.id}" value="delivered" ${order.status === 'delivered' ? 'checked' : ''}> Livré</label>
-                        <label><input type="radio" name="status-${order.id}" value="lost_turn" ${order.status === 'lost_turn' ? 'checked' : ''}> Tour Perdu</label>
+                        <label><input type="radio" name="status-${order.id}" value="pending" ${editState.currentStatus === 'pending' ? 'checked' : ''}> En préparation</label>
+                        <label><input type="radio" name="status-${order.id}" value="ready" ${editState.currentStatus === 'ready' ? 'checked' : ''}> Prêt</label>
+                        <label><input type="radio" name="status-${order.id}" value="delivered" ${editState.currentStatus === 'delivered' ? 'checked' : ''}> Livré</label>
+                        <label><input type="radio" name="status-${order.id}" value="lost_turn" ${editState.currentStatus === 'lost_turn' ? 'checked' : ''}> Tour Perdu</label>
                     `}
                 </div>
                 <div class="order-actions">
@@ -1045,7 +1085,7 @@ if (window.location.pathname.endsWith('manager.html')) {
             });
 
             // Attacher les écouteurs d'événements aux boutons d'action
-            const cancelBtn = orderItem.querySelector('.cancel-changes-btn'); // Nouveau bouton Annuler
+            const cancelBtn = orderItem.querySelector('.cancel-changes-btn');
             const validateBtn = orderItem.querySelector('.validate-order-btn');
             const deleteBtn = orderItem.querySelector('.delete-order-btn');
 
